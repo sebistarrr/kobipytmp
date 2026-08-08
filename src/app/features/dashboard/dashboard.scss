@@ -50,31 +50,6 @@
   gap: var(--sp-2);
 }
 
-.dash__period-btn {
-  height: 28px;
-  padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  color: var(--text-tertiary);
-  border: 1px solid transparent;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
-}
-
-.dash__period-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.dash__period-btn.is-active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
-  color: var(--accent-text);
-}
-
 /* --- Grille générale ------------------------------------------------------ */
 .dash {
   display: flex;
@@ -214,73 +189,6 @@
 
 .dash__priority .dt tbody tr:last-child td {
   border-bottom: none;
-}
-
-.dash__client {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.3;
-}
-
-.dash__client-name {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-.dash__client:hover .dash__client-name {
-  color: var(--accent-text);
-}
-
-.dash__client-ref {
-  font-size: var(--fs-2xs);
-  color: var(--text-tertiary);
-}
-
-.dash__score {
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-}
-
-.dash__score[data-band='VERY_HIGH'] {
-  color: var(--critical-text);
-}
-.dash__score[data-band='HIGH'] {
-  color: var(--warning-text);
-}
-.dash__score[data-band='MODERATE'] {
-  color: var(--info-text);
-}
-
-.dash__age {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.dash__age.is-late {
-  color: var(--critical-text);
-  font-weight: var(--fw-medium);
-}
-
-.dash__analyst {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
-  max-width: 150px;
-  font-size: var(--fs-xs);
-}
-
-.dash__unassigned {
-  font-size: var(--fs-xs);
-  color: var(--text-disabled);
-  font-style: italic;
 }
 
 /* --- Adaptations ---------------------------------------------------------- */

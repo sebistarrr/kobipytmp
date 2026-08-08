@@ -1,4 +1,12 @@
-import type { MatchAttribute } from '../../core/models';
+import {
+  COMPARISON_RESULT_META,
+  PRIORITY_META,
+  isOverdue,
+  type Alert,
+  type ComparisonResult,
+  type MatchAttribute,
+} from '../../core/models';
+import type { IconName } from '../ui/icon/icon';
 
 const FR_DATE = new Intl.DateTimeFormat('fr-FR', {
   day: '2-digit',
@@ -27,4 +35,41 @@ export function formatComparisonValue(
     return FR_DATE.format(new Date(value));
   }
   return value;
+}
+
+/**
+ * Icône associée à un résultat de comparaison.
+ *
+ * Le modèle décrit le pictogramme de façon abstraite (`check`, `cross`, …)
+ * pour ne pas dépendre de la bibliothèque d'icônes ; la traduction vers un
+ * nom d'icône concret est faite ici, une seule fois.
+ */
+export function comparisonIcon(result: ComparisonResult): IconName {
+  switch (COMPARISON_RESULT_META[result].icon) {
+    case 'check':
+      return 'check';
+    case 'approx':
+      return 'approx';
+    case 'cross':
+      return 'x';
+    case 'minus':
+      return 'minus';
+    case 'question':
+      return 'question';
+  }
+}
+
+/** Délai de traitement attendu pour la priorité de l'alerte, en heures. */
+export function slaHoursFor(alert: Alert): number {
+  return PRIORITY_META[alert.priority].slaHours;
+}
+
+/** Vrai lorsque l'alerte dépasse le délai attendu de sa priorité. */
+export function isAlertLate(alert: Alert): boolean {
+  return isOverdue(alert, slaHoursFor(alert));
+}
+
+/** Token de couleur de la priorité, utilisé pour le filet de criticité. */
+export function priorityColorVar(alert: Alert): string {
+  return PRIORITY_META[alert.priority].colorVar;
 }

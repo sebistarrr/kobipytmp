@@ -25,48 +25,6 @@
   flex-wrap: wrap;
 }
 
-.fb__search {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  flex: 1;
-  min-width: 260px;
-  max-width: 460px;
-  height: 34px;
-  padding: 0 var(--sp-3);
-  border-radius: var(--r-md);
-  border: 1px solid var(--border-default);
-  background: var(--bg-inset);
-  color: var(--text-tertiary);
-  transition:
-    border-color var(--dur-fast) var(--ease-out),
-    box-shadow var(--dur-fast) var(--ease-out);
-}
-
-.fb__search:focus-within {
-  border-color: var(--border-focus);
-  box-shadow: var(--shadow-focus);
-  background: var(--bg-surface);
-}
-
-.fb__search-input {
-  flex: 1;
-  min-width: 0;
-  background: none;
-  border: none;
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-}
-
-.fb__search-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* Retire la croix native de `input[type=search]`, redondante avec « Réinitialiser ». */
-.fb__search-input::-webkit-search-cancel-button {
-  appearance: none;
-}
-
 .fb__select {
   width: auto;
   min-width: 150px;
@@ -82,13 +40,20 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+/* `fieldset` regroupe sémantiquement les puces d'un même critère ; sa bordure
+   et son espacement natifs sont neutralisés. */
 .fb__group {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }
 
 .fb__group-label {
+  padding: 0;
   font-size: var(--fs-2xs);
   font-weight: var(--fw-semibold);
   letter-spacing: var(--ls-wide);
@@ -189,70 +154,6 @@
   margin-left: 5px;
   color: var(--sanction-text);
   vertical-align: middle;
-}
-
-.inbox__client {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  max-width: 260px;
-  line-height: 1.3;
-}
-
-.inbox__client-name {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-primary);
-}
-
-.inbox__client-meta {
-  font-size: var(--fs-2xs);
-  color: var(--text-tertiary);
-}
-
-.inbox__score {
-  font-weight: var(--fw-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.inbox__score[data-band='VERY_HIGH'] {
-  color: var(--critical-text);
-}
-.inbox__score[data-band='HIGH'] {
-  color: var(--warning-text);
-}
-.inbox__score[data-band='MODERATE'] {
-  color: var(--info-text);
-}
-
-.inbox__age {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.inbox__age.is-late {
-  color: var(--critical-text);
-  font-weight: var(--fw-medium);
-}
-
-.inbox__analyst {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-width: 0;
-  max-width: 160px;
-  font-size: var(--fs-xs);
-}
-
-.inbox__unassigned {
-  font-size: var(--fs-xs);
-  color: var(--text-disabled);
-  font-style: italic;
 }
 
 .inbox__last {

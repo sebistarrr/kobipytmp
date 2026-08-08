@@ -135,17 +135,6 @@ export class FrNumberPipe implements PipeTransform {
   }
 }
 
-/** Initiales d'un nom complet, pour les avatars. */
-@Pipe({ name: 'initials' })
-export class InitialsPipe implements PipeTransform {
-  transform(value: string | null | undefined): string {
-    if (!value) return '?';
-    const parts = value.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-    return `${parts[0]!.charAt(0)}${parts[parts.length - 1]!.charAt(0)}`.toUpperCase();
-  }
-}
-
 /** Remplace une valeur vide par un tiret cadratin. */
 @Pipe({ name: 'orDash' })
 export class OrDashPipe implements PipeTransform {

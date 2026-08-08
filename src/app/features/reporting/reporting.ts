@@ -13,8 +13,12 @@ import {
   type Decision,
   type ScreeningType,
 } from '../../core/models';
-import { AvatarComponent } from '../../shared/ui/avatar/avatar';
 import { IconComponent } from '../../shared/ui/icon/icon';
+import {
+  SegmentedControlComponent,
+  type SegmentOption,
+} from '../../shared/ui/segmented-control/segmented-control';
+import { AnalystCellComponent } from '../../shared/ui/cells/cells';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header';
 import { KpiCardComponent } from '../../shared/ui/kpi-card/kpi-card';
 import { AreaChartComponent, type AreaSeries } from '../../shared/ui/charts/area-chart';
@@ -52,7 +56,8 @@ interface AnalystRow {
     PageHeaderComponent,
     KpiCardComponent,
     IconComponent,
-    AvatarComponent,
+    SegmentedControlComponent,
+    AnalystCellComponent,
     AreaChartComponent,
     DonutChartComponent,
     BarListComponent,
@@ -66,7 +71,11 @@ export class ReportingComponent {
   protected readonly store = inject(AlertStore);
 
   protected readonly period = signal<Period>(90);
-  protected readonly periods: readonly Period[] = [30, 90, 180];
+  protected readonly periodOptions: readonly SegmentOption<Period>[] = [
+    { value: 30, label: '30 j', hint: '30 derniers jours' },
+    { value: 90, label: '90 j', hint: '90 derniers jours' },
+    { value: 180, label: '180 j', hint: '180 derniers jours' },
+  ];
 
   protected readonly stats = this.store.stats;
   protected readonly subsidiary = this.auth.activeSubsidiary;

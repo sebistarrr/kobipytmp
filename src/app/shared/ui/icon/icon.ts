@@ -147,6 +147,10 @@ const PATHS: Record<IconName, string> = {
   layers: '<path d="m12 3 9 4.8-9 4.8-9-4.8z"/><path d="m3 12.6 9 4.8 9-4.8"/><path d="m3 16.8 9 4.8 9-4.8"/>',
 };
 
+/* Cache partagé par toutes les instances : une icône n'est assainie qu'une
+   fois pour l'application entière, et non une fois par composant. */
+const TRUSTED_MARKUP = new Map<IconName, SafeHtml>();
+
 @Component({
   selector: 'app-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -186,15 +190,13 @@ export class IconComponent {
    * ci-dessus — jamais d'une saisie utilisateur — ce qui rend la levée de
    * contrôle sûre pour ce cas précis.
    */
-  private readonly trusted = new Map<IconName, SafeHtml>();
-
   protected readonly markup = computed<SafeHtml>(() => {
     const name = this.name();
-    const cached = this.trusted.get(name);
+    const cached = TRUSTED_MARKUP.get(name);
     if (cached) return cached;
 
     const html = this.sanitizer.bypassSecurityTrustHtml(PATHS[name]);
-    this.trusted.set(name, html);
+    TRUSTED_MARKUP.set(name, html);
     return html;
   });
 }

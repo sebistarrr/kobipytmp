@@ -8,37 +8,6 @@
   gap: var(--sp-3);
 }
 
-.rp__period {
-  display: flex;
-  gap: var(--sp-1);
-  padding: 3px;
-  border-radius: var(--r-md);
-  background: var(--bg-sunken);
-  border: 1px solid var(--border-subtle);
-}
-
-.rp__period-btn {
-  height: 26px;
-  padding: 0 var(--sp-3);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  color: var(--text-tertiary);
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-
-.rp__period-btn:hover {
-  color: var(--text-primary);
-}
-
-.rp__period-btn.is-active {
-  background: var(--bg-raised);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
-}
-
 .rp__updated {
   display: inline-flex;
   align-items: center;
@@ -96,12 +65,6 @@
 .rp__strong {
   font-weight: var(--fw-medium);
   color: var(--text-primary);
-}
-
-.rp__analyst {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
 }
 
 .rp__level {

@@ -15,7 +15,7 @@ import {
   type UserLevel,
 } from '../../core/models';
 import { AvatarComponent } from '../../shared/ui/avatar/avatar';
-import { IconComponent } from '../../shared/ui/icon/icon';
+import { IconComponent, type IconName } from '../../shared/ui/icon/icon';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header';
 import { LevelBadgeComponent } from '../../shared/ui/badges/badges';
 import { FrDatePipe } from '../../shared/pipes/format.pipes';
@@ -49,7 +49,7 @@ export class AdministrationComponent {
 
   protected readonly tab = signal<AdminTab>('users');
 
-  protected readonly tabs: readonly { id: AdminTab; label: string; icon: 'users' | 'building' | 'lock' | 'radar' }[] = [
+  protected readonly tabs: readonly { id: AdminTab; label: string; icon: IconName }[] = [
     { id: 'users', label: 'Utilisateurs', icon: 'users' },
     { id: 'subsidiaries', label: 'Filiales', icon: 'building' },
     { id: 'permissions', label: 'Matrice des droits', icon: 'lock' },
@@ -159,6 +159,20 @@ export class AdministrationComponent {
     { name: 'Registre national des gels', authority: 'DG Trésor (France)', records: 892, updatedAt: '2026-08-07' },
     { name: 'Base PEP mondiale', authority: 'Factiva', records: 1_842_500, updatedAt: '2026-08-07' },
   ];
+
+  /** Flèches gauche/droite entre les onglets, motif ARIA « tablist ». */
+  protected onTabKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    event.preventDefault();
+
+    const current = this.tabs.findIndex((tab) => tab.id === this.tab());
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const next = this.tabs[(current + step + this.tabs.length) % this.tabs.length];
+    if (!next) return;
+
+    this.tab.set(next.id);
+    queueMicrotask(() => document.getElementById(`onglet-${next.id}`)?.focus());
+  }
 
   protected typeMeta(type: ScreeningType) {
     return SCREENING_TYPE_META[type];

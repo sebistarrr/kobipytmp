@@ -6,6 +6,7 @@ import {
   buildComparisonRows,
   COMPARISON_RESULT_META,
   type Alert,
+  type ComparisonResult,
 } from '../../../core/models';
 import { AvatarComponent } from '../../../shared/ui/avatar/avatar';
 import { IconComponent } from '../../../shared/ui/icon/icon';
@@ -415,7 +416,7 @@ export class AlertPreviewComponent {
       }));
   });
 
-  protected toneOf(result: keyof typeof COMPARISON_RESULT_META): string {
+  protected toneOf(result: ComparisonResult): string {
     return COMPARISON_RESULT_META[result].colorVar;
   }
 }

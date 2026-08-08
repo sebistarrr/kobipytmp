@@ -5,7 +5,8 @@ import {
   MATCH_ATTRIBUTE_LABELS,
   type MatchCriterion,
 } from '../../../core/models';
-import { IconComponent, type IconName } from '../icon/icon';
+import { IconComponent } from '../icon/icon';
+import { comparisonIcon } from '../../util/display';
 
 /**
  * Décomposition du score.
@@ -151,23 +152,8 @@ export class MatchBreakdownComponent {
         weight: criterion.weight,
         colorVar: meta.colorVar,
         resultLabel: meta.label,
-        icon: iconFor(meta.icon),
+        icon: comparisonIcon(criterion.result),
       };
     }),
   );
-}
-
-function iconFor(icon: 'check' | 'approx' | 'cross' | 'minus' | 'question'): IconName {
-  switch (icon) {
-    case 'check':
-      return 'check';
-    case 'approx':
-      return 'approx';
-    case 'cross':
-      return 'x';
-    case 'minus':
-      return 'minus';
-    case 'question':
-      return 'question';
-  }
 }

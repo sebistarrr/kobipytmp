@@ -12,12 +12,10 @@ import {
   SCREENING_TYPES,
   SCREENING_TYPE_META,
   processingHours,
-  scoreBand,
   type Alert,
   type Decision,
   type ScreeningType,
 } from '../../../core/models';
-import { AvatarComponent } from '../../../shared/ui/avatar/avatar';
 import { IconComponent } from '../../../shared/ui/icon/icon';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header';
 import { DrawerComponent } from '../../../shared/ui/overlay/drawer';
@@ -26,7 +24,17 @@ import {
   DecisionBadgeComponent,
   TypeBadgeComponent,
 } from '../../../shared/ui/badges/badges';
-import { EmptyStateComponent, TableSkeletonComponent } from '../../../shared/ui/states/states';
+import {
+  EmptyStateComponent,
+  ErrorStateComponent,
+  TableSkeletonComponent,
+} from '../../../shared/ui/states/states';
+import { SearchFieldComponent } from '../../../shared/ui/search-field/search-field';
+import {
+  AnalystCellComponent,
+  PartyCellComponent,
+  ScoreCellComponent,
+} from '../../../shared/ui/cells/cells';
 import { AgePipe, DurationPipe, FrDateTimePipe } from '../../../shared/pipes/format.pipes';
 import { AlertPreviewComponent } from '../components/alert-preview';
 
@@ -47,13 +55,17 @@ type SortKey = 'recent' | 'oldest' | 'duration' | 'score';
   imports: [
     PageHeaderComponent,
     IconComponent,
-    AvatarComponent,
     DrawerComponent,
     ModalComponent,
     AlertPreviewComponent,
+    SearchFieldComponent,
     DecisionBadgeComponent,
     TypeBadgeComponent,
+    ScoreCellComponent,
+    AnalystCellComponent,
+    PartyCellComponent,
     EmptyStateComponent,
+    ErrorStateComponent,
     TableSkeletonComponent,
     AgePipe,
     DurationPipe,
@@ -182,8 +194,8 @@ export class ProcessedComponent {
     this.levelFilter.set('');
   }
 
-  protected onSearch(event: Event): void {
-    this.search.set((event.target as HTMLInputElement).value);
+  protected onSearch(value: string): void {
+    this.search.set(value);
   }
 
   protected onDecision(event: Event): void {
@@ -218,6 +230,12 @@ export class ProcessedComponent {
 
   protected openAlert(alert: Alert): void {
     void this.router.navigate(['/alertes', alert.id]);
+  }
+
+  /** La barre d'espace active la ligne sans faire défiler la page. */
+  protected onRowSpace(alert: Alert, event: Event): void {
+    event.preventDefault();
+    this.openAlert(alert);
   }
 
   /* ---------------------------------------------------------------------------
@@ -285,9 +303,5 @@ export class ProcessedComponent {
 
   protected typeLabel(type: ScreeningType): string {
     return SCREENING_TYPE_META[type].label;
-  }
-
-  protected scoreBandOf(alert: Alert): string {
-    return scoreBand(alert.match.score);
   }
 }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { AlertStore } from '../../core/state/alert-store';
@@ -9,13 +9,22 @@ import {
   SCREENING_TYPE_META,
   alertAgeHours,
   isOverdue,
-  scoreBand,
   type Alert,
 } from '../../core/models';
-import { AvatarComponent } from '../../shared/ui/avatar/avatar';
 import { IconComponent } from '../../shared/ui/icon/icon';
 import { KpiCardComponent } from '../../shared/ui/kpi-card/kpi-card';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header';
+import {
+  SegmentedControlComponent,
+  type SegmentOption,
+} from '../../shared/ui/segmented-control/segmented-control';
+import {
+  AgeCellComponent,
+  AnalystCellComponent,
+  PartyCellComponent,
+  ScoreCellComponent,
+} from '../../shared/ui/cells/cells';
+import { isAlertLate, priorityColorVar, slaHoursFor } from '../../shared/util/display';
 import { AreaChartComponent, type AreaSeries } from '../../shared/ui/charts/area-chart';
 import { BarListComponent, type BarItem } from '../../shared/ui/charts/bar-list';
 import { DonutChartComponent, type DonutSegment } from '../../shared/ui/charts/donut-chart';
@@ -25,7 +34,7 @@ import {
   TypeBadgeComponent,
 } from '../../shared/ui/badges/badges';
 import { EmptyStateComponent, TableSkeletonComponent } from '../../shared/ui/states/states';
-import { AgePipe, DurationPipe, FrDateTimePipe } from '../../shared/pipes/format.pipes';
+import { DurationPipe, FrDateTimePipe } from '../../shared/pipes/format.pipes';
 
 type Period = 7 | 30 | 90;
 
@@ -36,17 +45,20 @@ type Period = 7 | 30 | 90;
     RouterLink,
     PageHeaderComponent,
     KpiCardComponent,
+    SegmentedControlComponent,
     AreaChartComponent,
     DonutChartComponent,
     BarListComponent,
     IconComponent,
-    AvatarComponent,
     StatusBadgeComponent,
     TypeBadgeComponent,
     RiskBadgeComponent,
+    ScoreCellComponent,
+    AnalystCellComponent,
+    PartyCellComponent,
+    AgeCellComponent,
     EmptyStateComponent,
     TableSkeletonComponent,
-    AgePipe,
     DurationPipe,
     FrDateTimePipe,
   ],
@@ -55,10 +67,15 @@ type Period = 7 | 30 | 90;
 })
 export class DashboardComponent {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   protected readonly store = inject(AlertStore);
 
   protected readonly period = signal<Period>(30);
-  protected readonly periods: readonly Period[] = [7, 30, 90];
+  protected readonly periodOptions: readonly SegmentOption<Period>[] = [
+    { value: 7, label: '7 j', hint: '7 derniers jours' },
+    { value: 30, label: '30 j', hint: '30 derniers jours' },
+    { value: 90, label: '90 j', hint: '90 derniers jours' },
+  ];
 
   protected readonly firstName = computed(() => this.auth.currentUser().firstName);
   protected readonly subsidiary = this.auth.activeSubsidiary;
@@ -221,17 +238,18 @@ export class DashboardComponent {
       .slice(0, 7),
   );
 
-  protected isLate(alert: Alert): boolean {
-    return isOverdue(alert, PRIORITY_META[alert.priority].slaHours);
+  protected readonly isLate = isAlertLate;
+  protected readonly priorityColor = priorityColorVar;
+  protected readonly slaHoursFor = slaHoursFor;
+
+  protected openAlert(alert: Alert): void {
+    void this.router.navigate(['/alertes', alert.id]);
   }
 
-  /** Token de couleur du filet de criticité, en tête de ligne. */
-  protected priorityColor(alert: Alert): string {
-    return PRIORITY_META[alert.priority].colorVar;
-  }
-
-  protected scoreBandOf(alert: Alert): string {
-    return scoreBand(alert.match.score);
+  /** La barre d'espace active la ligne sans faire défiler la page. */
+  protected onRowSpace(alert: Alert, event: Event): void {
+    event.preventDefault();
+    this.openAlert(alert);
   }
 
   protected readonly averageHours = computed(() => this.stats().averageProcessingHours);

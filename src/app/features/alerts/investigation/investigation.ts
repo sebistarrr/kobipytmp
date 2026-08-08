@@ -228,6 +228,21 @@ export class InvestigationComponent {
     if (next) void this.router.navigate(['/alertes', next.id]);
   }
 
+  /**
+   * Flèches gauche/droite entre les onglets, comme l'attend le motif ARIA
+   * « tablist » : seul l'onglet actif est dans l'ordre de tabulation.
+   */
+  protected onTabKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    event.preventDefault();
+
+    const next: BottomTab = this.tab() === 'comments' ? 'audit' : 'comments';
+    this.tab.set(next);
+
+    const id = next === 'comments' ? 'onglet-commentaires' : 'onglet-audit';
+    queueMicrotask(() => document.getElementById(id)?.focus());
+  }
+
   protected goBackToQueue(): void {
     void this.router.navigate(['/alertes/a-traiter']);
   }

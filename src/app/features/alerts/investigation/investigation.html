@@ -198,13 +198,21 @@
       <!-- Commentaires et historique -->
       <section class="panel">
         <header class="panel__head iv__tabs-head">
-          <div class="iv__tabs" role="tablist">
+          <div
+            class="iv__tabs"
+            role="tablist"
+            aria-label="Suivi du dossier"
+            (keydown)="onTabKeydown($event)"
+          >
             <button
               type="button"
               class="iv__tab"
               role="tab"
+              id="onglet-commentaires"
+              aria-controls="panneau-commentaires"
               [class.is-active]="tab() === 'comments'"
               [attr.aria-selected]="tab() === 'comments'"
+              [attr.tabindex]="tab() === 'comments' ? 0 : -1"
               (click)="tab.set('comments')"
             >
               <app-icon name="message" [size]="14" />
@@ -216,8 +224,11 @@
               type="button"
               class="iv__tab"
               role="tab"
+              id="onglet-audit"
+              aria-controls="panneau-audit"
               [class.is-active]="tab() === 'audit'"
               [attr.aria-selected]="tab() === 'audit'"
+              [attr.tabindex]="tab() === 'audit' ? 0 : -1"
               (click)="tab.set('audit')"
             >
               <app-icon name="activity" [size]="14" />
@@ -227,17 +238,31 @@
           </div>
         </header>
 
-        <div class="panel__body">
-          @if (tab() === 'comments') {
+        @if (tab() === 'comments') {
+          <div
+            class="panel__body"
+            role="tabpanel"
+            id="panneau-commentaires"
+            aria-labelledby="onglet-commentaires"
+            tabindex="0"
+          >
             <app-comment-thread
               [comments]="comments()"
               [canComment]="auth.has('alert:comment')"
               (submit)="onComment($event)"
             />
-          } @else {
+          </div>
+        } @else {
+          <div
+            class="panel__body"
+            role="tabpanel"
+            id="panneau-audit"
+            aria-labelledby="onglet-audit"
+            tabindex="0"
+          >
             <app-audit-timeline [events]="auditEvents()" />
-          }
-        </div>
+          </div>
+        }
       </section>
     </div>
 

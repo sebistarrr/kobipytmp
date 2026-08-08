@@ -35,17 +35,12 @@
 
   <!-- Filtres -->
   <div class="pr__filters">
-    <label class="pr__search">
-      <app-icon name="search" [size]="15" />
-      <input
-        type="search"
-        class="pr__search-input"
-        placeholder="Référence, client, analyste…"
-        [value]="search()"
-        (input)="onSearch($event)"
-        aria-label="Rechercher parmi les alertes traitées"
-      />
-    </label>
+    <app-search-field
+      [value]="search()"
+      placeholder="Référence, client, analyste…"
+      ariaLabel="Rechercher parmi les alertes traitées"
+      (search)="onSearch($event)"
+    />
 
     <select class="select pr__select" [value]="decisionFilter()" (change)="onDecision($event)" aria-label="Décision">
       <option value="">Toutes les décisions</option>
@@ -84,7 +79,13 @@
 
 <div class="pr">
   <section class="panel">
-    @if (store.loading()) {
+    @if (store.error(); as error) {
+      <app-error-state
+        title="Registre indisponible"
+        [message]="error"
+        (retry)="store.refresh()"
+      />
+    } @else if (store.loading()) {
       <app-table-skeleton [rowCount]="9" [columns]="[70, 40, 50, 35, 55, 50, 40, 35]" />
     } @else if (sorted().length === 0) {
       <app-empty-state
@@ -119,7 +120,17 @@
 
           <tbody>
             @for (alert of sorted(); track alert.id) {
-              <tr class="is-clickable" (click)="openAlert(alert)">
+              <tr
+                class="is-clickable"
+                tabindex="0"
+                role="link"
+                [attr.aria-label]="
+                  'Ouvrir ' + alert.reference + ', ' + alert.client.firstName + ' ' + alert.client.lastName
+                "
+                (click)="openAlert(alert)"
+                (keydown.enter)="openAlert(alert)"
+                (keydown.space)="onRowSpace(alert, $event)"
+              >
                 <td class="dt__accent" [style.background]="'var(' + decisionColor(alert) + ')'"></td>
 
                 <td>
@@ -133,12 +144,10 @@
                 </td>
 
                 <td>
-                  <div class="pr__client">
-                    <span class="pr__client-name truncate">
-                      {{ alert.client.firstName }} {{ alert.client.lastName }}
-                    </span>
-                    <span class="pr__client-meta truncate">{{ alert.client.reference }}</span>
-                  </div>
+                  <app-party-cell
+                    [name]="alert.client.firstName + ' ' + alert.client.lastName"
+                    [meta]="alert.client.reference"
+                  />
                 </td>
 
                 <td><app-type-badge [type]="alert.type" size="sm" /></td>
@@ -156,16 +165,11 @@
                 </td>
 
                 <td>
-                  @if (alert.resolution; as resolution) {
-                    <span class="pr__analyst">
-                      <app-avatar
-                        [name]="resolution.decidedByName"
-                        [hue]="alert.assignment?.userHue ?? 232"
-                        size="xs"
-                      />
-                      <span class="truncate">{{ resolution.decidedByName }}</span>
-                    </span>
-                  }
+                  <app-analyst-cell
+                    [name]="alert.resolution?.decidedByName ?? null"
+                    [hue]="alert.assignment?.userHue ?? 232"
+                    emptyLabel="—"
+                  />
                 </td>
 
                 <td class="pr__nowrap">
@@ -179,11 +183,7 @@
 
                 <td class="pr__nowrap">{{ duration(alert) | duration }}</td>
 
-                <td class="dt__num">
-                  <span class="pr__score" [attr.data-band]="scoreBandOf(alert)">
-                    {{ alert.match.score }} %
-                  </span>
-                </td>
+                <td class="dt__num"><app-score-cell [score]="alert.match.score" /></td>
 
                 <td class="pr__row-actions" (click)="$event.stopPropagation()">
                   <button

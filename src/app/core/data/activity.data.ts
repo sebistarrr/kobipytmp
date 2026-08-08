@@ -362,8 +362,3 @@ export const COMMENTS_BY_ALERT: ReadonlyMap<string, readonly AlertComment[]> = n
   ALERTS.map((alert) => [alert.id, buildComments(alert)] as const),
 );
 
-/** Dernières entrées d'audit tous dossiers confondus, pour le fil d'activité. */
-export const RECENT_ACTIVITY: readonly AuditEvent[] = [...AUDIT_BY_ALERT.values()]
-  .flat()
-  .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  .slice(0, 40);

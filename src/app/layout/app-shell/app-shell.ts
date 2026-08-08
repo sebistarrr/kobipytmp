@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 
 import { CommandPaletteComponent } from '../command-palette/command-palette';
 import { HeaderComponent } from '../header/header';
@@ -64,14 +66,24 @@ const SHORTCUT_GROUPS: readonly { title: string; items: readonly Shortcut[] }[] 
     ModalComponent,
   ],
   template: `
-    <div class="shell" [attr.data-collapsed]="layout.sidebarCollapsed() || null">
-      <aside class="shell__nav">
+    <a class="shell__skip" href="#contenu">Aller au contenu principal</a>
+
+    <div
+      class="shell"
+      [attr.data-collapsed]="layout.railCollapsed() || null"
+      [attr.data-nav-open]="layout.mobileNavOpen() || null"
+    >
+      @if (layout.mobileNavOpen()) {
+        <div class="shell__nav-scrim" (click)="layout.closeMobileNav()" aria-hidden="true"></div>
+      }
+
+      <aside class="shell__nav" [attr.inert]="navHidden() ? '' : null">
         <app-sidebar />
       </aside>
 
       <div class="shell__main">
         <app-header />
-        <main class="shell__content scroll-y" id="contenu">
+        <main class="shell__content scroll-y" id="contenu" tabindex="-1">
           <router-outlet />
         </main>
       </div>
@@ -115,6 +127,37 @@ const SHORTCUT_GROUPS: readonly { title: string; items: readonly Shortcut[] }[] 
       height: 100dvh;
     }
 
+    /* Lien d'évitement : premier élément tabulable de la page, révélé au focus. */
+    .shell__skip {
+      position: fixed;
+      top: var(--sp-2);
+      left: var(--sp-2);
+      z-index: calc(var(--z-toast) + 1);
+      padding: var(--sp-2) var(--sp-4);
+      border-radius: var(--r-md);
+      background: var(--accent);
+      color: #fff;
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-medium);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-200%);
+      transition: transform var(--dur-fast) var(--ease-out);
+    }
+
+    .shell__skip:focus-visible {
+      transform: translateY(0);
+      outline-offset: 3px;
+    }
+
+    .shell__nav-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: var(--z-drawer);
+      background: var(--scrim);
+      backdrop-filter: blur(2px);
+      animation: fade-in var(--dur-fast) var(--ease-out);
+    }
+
     .shell {
       display: grid;
       grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
@@ -142,6 +185,13 @@ const SHORTCUT_GROUPS: readonly { title: string; items: readonly Shortcut[] }[] 
       flex: 1;
       min-height: 0;
       background: var(--bg-canvas);
+    }
+
+    /* Transition de route : le composant routé étant recréé à chaque
+       navigation, l'animation se rejoue sans machinerie supplémentaire. */
+    .shell__content > * {
+      display: block;
+      animation: fade-in var(--dur-base) var(--ease-out);
     }
 
     /* --- Raccourcis --- */
@@ -179,21 +229,31 @@ const SHORTCUT_GROUPS: readonly { title: string; items: readonly Shortcut[] }[] 
       flex: none;
     }
 
-    /* Sous tablette, la navigation se réduit d'office pour rendre la place. */
-    @media (max-width: 1080px) {
-      .shell,
-      .shell[data-collapsed] {
-        grid-template-columns: var(--sidebar-w-collapsed) minmax(0, 1fr);
-      }
-    }
-
+    /* Sous 720 px, la navigation quitte la grille et se superpose au contenu.
+       Elle reste atteignable par le bouton du header, ce qui évite de laisser
+       l'application sans navigation sur téléphone. */
     @media (max-width: 720px) {
       .shell,
       .shell[data-collapsed] {
         grid-template-columns: 0 minmax(0, 1fr);
       }
+
       .shell__nav {
-        display: none;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: calc(var(--z-drawer) + 1);
+        width: var(--sidebar-w);
+        box-shadow: var(--shadow-xl);
+        transform: translateX(-100%);
+        transition: transform var(--dur-base) var(--ease-out);
+        visibility: hidden;
+      }
+
+      .shell[data-nav-open] .shell__nav {
+        transform: translateX(0);
+        visibility: visible;
       }
     }
   `,
@@ -204,6 +264,24 @@ export class AppShellComponent {
   private readonly router = inject(Router);
 
   protected readonly shortcutGroups = SHORTCUT_GROUPS;
+
+  /**
+   * Sur petit écran, la navigation repliée est retirée de l'ordre de
+   * tabulation : `visibility: hidden` suffit au rendu, mais `inert` évite en
+   * plus qu'un lecteur d'écran ne parcoure un menu invisible.
+   */
+  protected readonly navHidden = computed(() => this.layout.compact() && !this.layout.mobileNavOpen());
+
+  constructor() {
+    /* Un changement d'écran referme la navigation superposée : sans cela elle
+       resterait ouverte par-dessus la page que l'on vient d'ouvrir. */
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.layout.closeMobileNav());
+  }
 
   /** Première touche d'une séquence « g puis … », expirée après deux secondes. */
   private readonly pendingChord = signal<string | null>(null);
@@ -226,7 +304,7 @@ export class AppShellComponent {
 
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
       event.preventDefault();
-      this.layout.toggleSidebar();
+      this.layout.toggleNavigation();
       return;
     }
 

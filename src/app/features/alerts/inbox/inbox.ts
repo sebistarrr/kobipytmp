@@ -15,13 +15,11 @@ import {
   SCREENING_TYPE_META,
   alertAgeHours,
   isOverdue,
-  scoreBand,
   type Alert,
   type AlertStatus,
   type Priority,
   type ScreeningType,
 } from '../../../core/models';
-import { AvatarComponent } from '../../../shared/ui/avatar/avatar';
 import { IconComponent } from '../../../shared/ui/icon/icon';
 import { PageHeaderComponent } from '../../../shared/ui/page-header/page-header';
 import { DrawerComponent } from '../../../shared/ui/overlay/drawer';
@@ -30,12 +28,31 @@ import {
   StatusBadgeComponent,
   TypeBadgeComponent,
 } from '../../../shared/ui/badges/badges';
-import { EmptyStateComponent, TableSkeletonComponent } from '../../../shared/ui/states/states';
+import {
+  EmptyStateComponent,
+  ErrorStateComponent,
+  TableSkeletonComponent,
+} from '../../../shared/ui/states/states';
+import { SearchFieldComponent } from '../../../shared/ui/search-field/search-field';
+import {
+  AgeCellComponent,
+  AnalystCellComponent,
+  PartyCellComponent,
+  ScoreCellComponent,
+} from '../../../shared/ui/cells/cells';
 import { AgePipe, FrDatePipe } from '../../../shared/pipes/format.pipes';
+import { isAlertLate, priorityColorVar, slaHoursFor } from '../../../shared/util/display';
 import { AlertPreviewComponent } from '../components/alert-preview';
 
-export type SortKey = 'priority' | 'score' | 'age' | 'recent' | 'client';
+/** Colonnes sur lesquelles la file peut être triée. */
+export type SortKey = 'reference' | 'priority' | 'type' | 'client' | 'score' | 'generated' | 'status';
+export type SortDirection = 'asc' | 'desc';
 export type AgeBucket = 'all' | 'today' | 'week' | 'older' | 'overdue';
+
+interface Sort {
+  readonly key: SortKey;
+  readonly dir: SortDirection;
+}
 
 interface Filters {
   search: string;
@@ -44,7 +61,6 @@ interface Filters {
   statuses: readonly AlertStatus[];
   analystId: string;
   age: AgeBucket;
-  sort: SortKey;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -54,8 +70,10 @@ const EMPTY_FILTERS: Filters = {
   statuses: [],
   analystId: '',
   age: 'all',
-  sort: 'priority',
 };
+
+/** Tri par défaut : les dossiers les plus urgents en tête. */
+const DEFAULT_SORT: Sort = { key: 'priority', dir: 'desc' };
 
 const PAGE_SIZES = [25, 50, 100] as const;
 
@@ -74,13 +92,18 @@ const PAGE_SIZES = [25, 50, 100] as const;
   imports: [
     PageHeaderComponent,
     IconComponent,
-    AvatarComponent,
     DrawerComponent,
     AlertPreviewComponent,
+    SearchFieldComponent,
     StatusBadgeComponent,
     TypeBadgeComponent,
     RiskBadgeComponent,
+    ScoreCellComponent,
+    AnalystCellComponent,
+    PartyCellComponent,
+    AgeCellComponent,
     EmptyStateComponent,
+    ErrorStateComponent,
     TableSkeletonComponent,
     AgePipe,
     FrDatePipe,
@@ -100,6 +123,7 @@ export class InboxComponent {
   );
 
   protected readonly filters = signal<Filters>({ ...EMPTY_FILTERS });
+  protected readonly sort = signal<Sort>({ ...DEFAULT_SORT });
   protected readonly page = signal(1);
   protected readonly pageSize = signal<number>(25);
   protected readonly selection = signal<ReadonlySet<string>>(new Set());
@@ -117,12 +141,15 @@ export class InboxComponent {
     { value: 'older', label: 'Plus de 7 jours' },
     { value: 'overdue', label: 'Hors délai' },
   ];
-  protected readonly sortOptions: readonly { value: SortKey; label: string }[] = [
-    { value: 'priority', label: 'Priorité' },
-    { value: 'score', label: 'Score décroissant' },
-    { value: 'age', label: 'Plus anciennes' },
-    { value: 'recent', label: 'Plus récentes' },
-    { value: 'client', label: 'Nom du client' },
+  /** Colonnes triables, dans l'ordre du tableau. */
+  protected readonly columns: readonly { key: SortKey; label: string; numeric?: boolean }[] = [
+    { key: 'reference', label: 'Alerte' },
+    { key: 'priority', label: 'Priorité' },
+    { key: 'type', label: 'Type' },
+    { key: 'client', label: 'Client' },
+    { key: 'score', label: 'Score', numeric: true },
+    { key: 'generated', label: 'Génération' },
+    { key: 'status', label: 'Statut' },
   ];
 
   constructor() {
@@ -197,38 +224,73 @@ export class InboxComponent {
   });
 
   protected readonly sorted = computed(() => {
-    const sort = this.filters().sort;
-    const alerts = [...this.filtered()];
+    const { key, dir } = this.sort();
+    const factor = dir === 'asc' ? 1 : -1;
 
-    switch (sort) {
-      case 'score':
-        return alerts.sort((a, b) => b.match.score - a.match.score);
-      case 'age':
-        return alerts.sort(
-          (a, b) => new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime(),
-        );
-      case 'recent':
-        return alerts.sort(
-          (a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime(),
-        );
-      case 'client':
-        return alerts.sort((a, b) =>
-          `${a.client.lastName} ${a.client.firstName}`.localeCompare(
-            `${b.client.lastName} ${b.client.firstName}`,
-            'fr',
-          ),
-        );
-      default:
-        /* Priorité, puis dépassement de délai, puis ancienneté. */
-        return alerts.sort((a, b) => {
-          const weight = PRIORITY_META[b.priority].weight - PRIORITY_META[a.priority].weight;
-          if (weight !== 0) return weight;
+    return [...this.filtered()].sort((a, b) => {
+      switch (key) {
+        case 'reference':
+          return factor * a.reference.localeCompare(b.reference, 'fr');
+        case 'type':
+          return factor * a.type.localeCompare(b.type);
+        case 'client':
+          return (
+            factor *
+            `${a.client.lastName} ${a.client.firstName}`.localeCompare(
+              `${b.client.lastName} ${b.client.firstName}`,
+              'fr',
+            )
+          );
+        case 'score':
+          return factor * (a.match.score - b.match.score);
+        case 'generated':
+          return factor * (new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime());
+        case 'status':
+          return factor * a.status.localeCompare(b.status);
+        default: {
+          /* Priorité, puis dépassement de délai, puis ancienneté : trois
+             critères, parce qu'une priorité seule laisse trop d'ex æquo. */
+          const weight = PRIORITY_META[a.priority].weight - PRIORITY_META[b.priority].weight;
+          if (weight !== 0) return factor * weight;
+
           const lateA = isOverdue(a, PRIORITY_META[a.priority].slaHours) ? 1 : 0;
           const lateB = isOverdue(b, PRIORITY_META[b.priority].slaHours) ? 1 : 0;
-          if (lateA !== lateB) return lateB - lateA;
-          return new Date(a.generatedAt).getTime() - new Date(b.generatedAt).getTime();
-        });
-    }
+          if (lateA !== lateB) return factor * (lateA - lateB);
+
+          return factor * (new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime());
+        }
+      }
+    });
+  });
+
+  /**
+   * Un clic sur un en-tête trie sur cette colonne ; un second clic inverse le
+   * sens. Le changement de colonne repart du sens le plus utile : décroissant
+   * pour les valeurs (score, priorité, date), croissant pour le texte.
+   */
+  protected toggleSort(key: SortKey): void {
+    this.sort.update((current) => {
+      if (current.key === key) {
+        return { key, dir: current.dir === 'asc' ? 'desc' : 'asc' };
+      }
+      const textual = key === 'reference' || key === 'client' || key === 'type' || key === 'status';
+      return { key, dir: textual ? 'asc' : 'desc' };
+    });
+  }
+
+  /** Valeur de `aria-sort` attendue par les lecteurs d'écran sur un `<th>`. */
+  protected ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+    const sort = this.sort();
+    if (sort.key !== key) return 'none';
+    return sort.dir === 'asc' ? 'ascending' : 'descending';
+  }
+
+  /** Description du tri courant, restituée dans la légende du tableau. */
+  protected readonly sortLabel = computed(() => {
+    const { key, dir } = this.sort();
+    const column = this.columns.find((candidate) => candidate.key === key);
+    const direction = dir === 'asc' ? 'croissant' : 'décroissant';
+    return `${column?.label ?? key} (${direction})`;
   });
 
   /* ---------------------------------------------------------------------------
@@ -264,8 +326,7 @@ export class InboxComponent {
      Filtres
      ------------------------------------------------------------------------ */
 
-  protected onSearch(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  protected onSearch(value: string): void {
     this.filters.update((filters) => ({ ...filters, search: value }));
   }
 
@@ -304,11 +365,6 @@ export class InboxComponent {
   protected setAge(event: Event): void {
     const value = (event.target as HTMLSelectElement).value as AgeBucket;
     this.filters.update((filters) => ({ ...filters, age: value }));
-  }
-
-  protected setSort(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value as SortKey;
-    this.filters.update((filters) => ({ ...filters, sort: value }));
   }
 
   protected resetFilters(): void {
@@ -440,21 +496,19 @@ export class InboxComponent {
     void this.router.navigate(['/alertes', alert.id]);
   }
 
+  /** La barre d'espace active la ligne sans faire défiler la page. */
+  protected onRowSpace(alert: Alert, event: Event): void {
+    event.preventDefault();
+    this.openAlert(alert);
+  }
+
   /* ---------------------------------------------------------------------------
      Aides de rendu
      ------------------------------------------------------------------------ */
 
-  protected isLate(alert: Alert): boolean {
-    return isOverdue(alert, PRIORITY_META[alert.priority].slaHours);
-  }
-
-  protected priorityColor(alert: Alert): string {
-    return PRIORITY_META[alert.priority].colorVar;
-  }
-
-  protected scoreBandOf(alert: Alert): string {
-    return scoreBand(alert.match.score);
-  }
+  protected readonly isLate = isAlertLate;
+  protected readonly priorityColor = priorityColorVar;
+  protected readonly slaHoursFor = slaHoursFor;
 
   protected typeLabel(type: ScreeningType): string {
     return SCREENING_TYPE_META[type].label;

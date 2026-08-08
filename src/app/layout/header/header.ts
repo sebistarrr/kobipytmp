@@ -29,8 +29,15 @@ type OpenMenu = 'subsidiary' | 'notifications' | 'user' | null;
       <button
         type="button"
         class="btn btn--ghost btn--icon"
-        (click)="layout.toggleSidebar()"
-        aria-label="Afficher ou masquer le menu"
+        (click)="layout.toggleNavigation()"
+        [attr.aria-expanded]="layout.compact() ? layout.mobileNavOpen() : null"
+        [attr.aria-label]="
+          layout.compact()
+            ? layout.mobileNavOpen()
+              ? 'Fermer le menu'
+              : 'Ouvrir le menu'
+            : 'Réduire ou déployer le menu'
+        "
       >
         <app-icon name="panel-left" [size]="17" />
       </button>

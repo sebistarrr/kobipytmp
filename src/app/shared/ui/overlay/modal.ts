@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { IconComponent } from '../icon/icon';
+import { focusFirst, trapFocus } from '../../util/focus-trap';
 
 /**
  * Boîte de dialogue modale.
@@ -201,22 +202,33 @@ export class ModalComponent {
   private readonly host = inject(ElementRef);
 
   constructor() {
-    effect(() => {
-      if (!this.open()) return;
-      queueMicrotask(() => this.panel()?.nativeElement.focus());
-    });
-
+    /* Ouverture : focus dans le panneau, tabulation confinée, retour du focus
+       à l'élément déclencheur à la fermeture. */
     effect((onCleanup) => {
       if (!this.open()) return;
-      const handler = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation();
-          this.close.emit();
-        }
+
+      let release: (() => void) | undefined;
+
+      queueMicrotask(() => {
+        const panel = this.panel()?.nativeElement;
+        if (!panel) return;
+        release = trapFocus(panel);
+        focusFirst(panel);
+      });
+
+      const onEscape = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        this.close.emit();
       };
+
       const element = this.host.nativeElement as HTMLElement;
-      element.addEventListener('keydown', handler);
-      onCleanup(() => element.removeEventListener('keydown', handler));
+      element.addEventListener('keydown', onEscape);
+
+      onCleanup(() => {
+        element.removeEventListener('keydown', onEscape);
+        release?.();
+      });
     });
   }
 }

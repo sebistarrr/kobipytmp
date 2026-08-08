@@ -12,24 +12,33 @@
     }
   </div>
 
-  <nav class="ad__tabs" role="tablist">
+  <div class="ad__tabs" role="tablist" aria-label="Sections d'administration" (keydown)="onTabKeydown($event)">
     @for (item of tabs; track item.id) {
       <button
         type="button"
         class="ad__tab"
         role="tab"
+        [id]="'onglet-' + item.id"
+        [attr.aria-controls]="'panneau-' + item.id"
         [class.is-active]="tab() === item.id"
         [attr.aria-selected]="tab() === item.id"
+        [attr.tabindex]="tab() === item.id ? 0 : -1"
         (click)="tab.set(item.id)"
       >
         <app-icon [name]="item.icon" [size]="14" />
         {{ item.label }}
       </button>
     }
-  </nav>
+  </div>
 </app-page-header>
 
-<div class="ad">
+<div
+  class="ad"
+  role="tabpanel"
+  [id]="'panneau-' + tab()"
+  [attr.aria-labelledby]="'onglet-' + tab()"
+  tabindex="0"
+>
   <!-- ══ Utilisateurs ═════════════════════════════════════════════════════ -->
   @if (tab() === 'users') {
     <section class="ad__stats anim-fade-in">

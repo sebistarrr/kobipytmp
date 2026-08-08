@@ -71,14 +71,6 @@ export const ALERT_STATUSES: readonly AlertStatus[] = [
   'REOPENED',
 ] as const;
 
-/** Statuts pour lesquels l'alerte reste dans le flux de traitement. */
-export const OPEN_STATUSES: readonly AlertStatus[] = [
-  'TO_PROCESS',
-  'ASSIGNED',
-  'IN_PROGRESS',
-  'ESCALATED',
-  'REOPENED',
-] as const;
 
 export interface AlertStatusMeta {
   readonly label: string;

@@ -21,16 +21,12 @@
   </div>
 
   <div headerActions class="dash__period">
-    @for (option of periods; track option) {
-      <button
-        type="button"
-        class="dash__period-btn"
-        [class.is-active]="period() === option"
-        (click)="period.set(option)"
-      >
-        {{ option }} j
-      </button>
-    }
+    <app-segmented-control
+      [options]="periodOptions"
+      [value]="period()"
+      ariaLabel="Période d'observation"
+      (select)="period.set($event)"
+    />
     <button type="button" class="btn btn--secondary btn--sm" (click)="store.refresh()">
       <app-icon name="refresh" [size]="13" />
       Actualiser
@@ -42,6 +38,7 @@
   <!-- ══ Indicateurs ══════════════════════════════════════════════════════ -->
   <section class="dash__kpis anim-stagger" aria-label="Indicateurs clés">
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes non traitées"
       [value]="stats().open"
       icon="layers"
@@ -53,6 +50,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes à traiter"
       [value]="stats().toProcess"
       icon="inbox"
@@ -63,6 +61,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes affectées"
       [value]="stats().assigned + stats().inProgress"
       icon="user-check"
@@ -73,6 +72,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes générées"
       [value]="volumeTotals().generated"
       icon="radar"
@@ -84,6 +84,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes traitées"
       [value]="stats().processed"
       icon="check-circle"
@@ -95,6 +96,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes avérées"
       [value]="stats().confirmed"
       icon="alert-triangle"
@@ -105,6 +107,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Alertes neutralisées"
       [value]="stats().neutralized + stats().homonym"
       icon="shield-check"
@@ -114,6 +117,7 @@
     />
 
     <app-kpi-card
+      [loading]="store.loading()"
       label="Délai moyen de traitement"
       [value]="averageHours() | duration"
       icon="clock"
@@ -290,7 +294,17 @@
           </thead>
           <tbody>
             @for (alert of priorityAlerts(); track alert.id) {
-              <tr class="is-clickable">
+              <tr
+                class="is-clickable"
+                tabindex="0"
+                role="link"
+                [attr.aria-label]="
+                  'Ouvrir ' + alert.reference + ', ' + alert.client.firstName + ' ' + alert.client.lastName
+                "
+                (click)="openAlert(alert)"
+                (keydown.enter)="openAlert(alert)"
+                (keydown.space)="onRowSpace(alert, $event)"
+              >
                 <td
                   class="dt__accent"
                   [style.background]="'var(' + priorityColor(alert) + ')'"
@@ -301,48 +315,37 @@
                 <td><app-type-badge [type]="alert.type" size="sm" /></td>
 
                 <td>
-                  <a class="dash__client" [routerLink]="['/alertes', alert.id]">
-                    <span class="dash__client-name">
-                      {{ alert.client.firstName }} {{ alert.client.lastName }}
-                    </span>
-                    <span class="dash__client-ref mono">{{ alert.reference }}</span>
-                  </a>
+                  <app-party-cell
+                    [name]="alert.client.firstName + ' ' + alert.client.lastName"
+                    [meta]="alert.reference"
+                  />
                 </td>
 
-                <td class="dt__num">
-                  <span class="dash__score" [attr.data-band]="scoreBandOf(alert)">
-                    {{ alert.match.score }} %
-                  </span>
-                </td>
+                <td class="dt__num"><app-score-cell [score]="alert.match.score" /></td>
 
                 <td>
-                  <span class="dash__age" [class.is-late]="isLate(alert)">
-                    @if (isLate(alert)) {
-                      <app-icon name="clock" [size]="12" />
-                    }
-                    {{ alert.generatedAt | age }}
-                  </span>
+                  <app-age-cell
+                    [since]="alert.generatedAt"
+                    [late]="isLate(alert)"
+                    [slaHours]="slaHoursFor(alert)"
+                  />
                 </td>
 
                 <td><app-status-badge [status]="alert.status" size="sm" /></td>
 
                 <td>
-                  @if (alert.assignment) {
-                    <span class="dash__analyst">
-                      <app-avatar
-                        [name]="alert.assignment.userName"
-                        [hue]="alert.assignment.userHue"
-                        size="xs"
-                      />
-                      <span class="truncate">{{ alert.assignment.userName }}</span>
-                    </span>
-                  } @else {
-                    <span class="dash__unassigned">Non affectée</span>
-                  }
+                  <app-analyst-cell
+                    [name]="alert.assignment?.userName ?? null"
+                    [hue]="alert.assignment?.userHue ?? 232"
+                  />
                 </td>
 
-                <td>
-                  <a class="btn btn--secondary btn--sm" [routerLink]="['/alertes', alert.id]">
+                <td (click)="$event.stopPropagation()">
+                  <a
+                    class="btn btn--secondary btn--sm"
+                    [routerLink]="['/alertes', alert.id]"
+                    [attr.aria-label]="'Traiter ' + alert.reference"
+                  >
                     Traiter
                     <app-icon name="arrow-right" [size]="12" />
                   </a>

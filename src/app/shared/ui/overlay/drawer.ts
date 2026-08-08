@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 
 import { IconComponent } from '../icon/icon';
+import { focusFirst, trapFocus } from '../../util/focus-trap';
 
 /**
  * Panneau latéral.
@@ -136,25 +137,34 @@ export class DrawerComponent {
   private readonly host = inject(ElementRef);
 
   constructor() {
-    /* Le focus entre dans le panneau à l'ouverture pour que Échap fonctionne
-       immédiatement et que la navigation clavier ne reste pas derrière le voile. */
-    effect(() => {
-      if (!this.open()) return;
-      queueMicrotask(() => this.panel()?.nativeElement.focus());
-    });
-
-    /* Échap depuis n'importe où dans le panneau, y compris le contenu projeté. */
+    /* Le focus entre dans le panneau à l'ouverture et y reste tant qu'il est
+       ouvert : sans cela la tabulation part explorer la page masquée par le
+       voile. Échap est écouté sur l'hôte pour couvrir le contenu projeté. */
     effect((onCleanup) => {
       if (!this.open()) return;
-      const handler = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation();
-          this.close.emit();
-        }
+
+      let release: (() => void) | undefined;
+
+      queueMicrotask(() => {
+        const panel = this.panel()?.nativeElement;
+        if (!panel) return;
+        release = trapFocus(panel);
+        focusFirst(panel);
+      });
+
+      const onEscape = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        this.close.emit();
       };
+
       const element = this.host.nativeElement as HTMLElement;
-      element.addEventListener('keydown', handler);
-      onCleanup(() => element.removeEventListener('keydown', handler));
+      element.addEventListener('keydown', onEscape);
+
+      onCleanup(() => {
+        element.removeEventListener('keydown', onEscape);
+        release?.();
+      });
     });
   }
 }

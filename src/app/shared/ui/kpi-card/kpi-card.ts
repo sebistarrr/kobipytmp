@@ -36,26 +36,33 @@ export type TrendDirection = 'up' | 'down' | 'flat';
       </header>
 
       <div class="kpi__body">
-        <div class="kpi__figures">
-          <p class="kpi__value">
-            {{ displayValue() }}<span class="kpi__suffix">{{ suffix() }}</span>
-          </p>
-
-          @if (delta() !== null) {
-            <p class="kpi__delta" [attr.data-dir]="sentiment()">
-              <app-icon [name]="trendIcon()" [size]="12" [strokeWidth]="2.2" />
-              <span>{{ deltaLabel() }}</span>
-              <span class="kpi__delta-period">{{ period() }}</span>
-            </p>
-          } @else if (hint()) {
-            <p class="kpi__hint">{{ hint() }}</p>
-          }
-        </div>
-
-        @if (series().length > 1) {
-          <div class="kpi__spark">
-            <app-sparkline [values]="series()" [tone]="sparkTone()" />
+        @if (loading()) {
+          <div class="kpi__figures">
+            <div class="skeleton kpi__skeleton-value"></div>
+            <div class="skeleton kpi__skeleton-hint"></div>
           </div>
+        } @else {
+          <div class="kpi__figures">
+            <p class="kpi__value">
+              {{ displayValue() }}<span class="kpi__suffix">{{ suffix() }}</span>
+            </p>
+
+            @if (delta() !== null) {
+              <p class="kpi__delta" [attr.data-dir]="sentiment()">
+                <app-icon [name]="trendIcon()" [size]="12" [strokeWidth]="2.2" />
+                <span>{{ deltaLabel() }}</span>
+                <span class="kpi__delta-period">{{ period() }}</span>
+              </p>
+            } @else if (hint()) {
+              <p class="kpi__hint">{{ hint() }}</p>
+            }
+          </div>
+
+          @if (series().length > 1) {
+            <div class="kpi__spark">
+              <app-sparkline [values]="series()" [tone]="sparkTone()" />
+            </div>
+          }
         }
       </div>
     </div>
@@ -197,6 +204,19 @@ export type TrendDirection = 'up' | 'down' | 'flat';
       color: var(--text-tertiary);
     }
 
+    .kpi__skeleton-value {
+      width: 72px;
+      height: 26px;
+      border-radius: var(--r-sm);
+    }
+
+    .kpi__skeleton-hint {
+      width: 108px;
+      height: 9px;
+      margin-top: var(--sp-3);
+      border-radius: var(--r-full);
+    }
+
     .kpi__spark {
       width: 88px;
       flex: none;
@@ -226,6 +246,8 @@ export class KpiCardComponent {
   readonly linkParams = input<Record<string, string>>({});
   /** Inverse la lecture : une hausse devient un signal négatif. */
   readonly invertTrend = input(false);
+  /** Affiche un squelette à la place des chiffres tant que la donnée arrive. */
+  readonly loading = input(false);
 
   protected readonly displayValue = computed(() => {
     const value = this.value();

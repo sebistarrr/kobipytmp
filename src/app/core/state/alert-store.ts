@@ -42,13 +42,25 @@ export class AlertStore {
   private readonly _audit = signal<ReadonlyMap<string, readonly AuditEvent[]>>(AUDIT_BY_ALERT);
 
   private readonly _loading = signal(true);
+  private readonly _error = signal<string | null>(null);
   private readonly _lastRefreshedAt = signal(new Date().toISOString());
 
   readonly loading = this._loading.asReadonly();
+
+  /** Message d'échec du dernier chargement, `null` en fonctionnement normal. */
+  readonly error = this._error.asReadonly();
+
   readonly lastRefreshedAt = this._lastRefreshedAt.asReadonly();
 
   /** Toutes les alertes, tous périmètres confondus. */
   readonly allAlerts = this._alerts.asReadonly();
+
+  /**
+   * Index par identifiant. Les écrans d'investigation et les notifications
+   * résolvent une alerte à chaque cycle de rendu ; un parcours linéaire de la
+   * collection à chaque accès se paierait sur les listes volumineuses.
+   */
+  private readonly byIdIndex = computed(() => new Map(this._alerts().map((a) => [a.id, a] as const)));
 
   /** Alertes du périmètre actif — la base de tous les écrans métier. */
   readonly alerts = computed(() => {
@@ -87,7 +99,7 @@ export class AlertStore {
      ------------------------------------------------------------------------ */
 
   byId(alertId: string): Alert | undefined {
-    return this._alerts().find((alert) => alert.id === alertId);
+    return this.byIdIndex().get(alertId);
   }
 
   byReference(reference: string): Alert | undefined {
@@ -122,8 +134,20 @@ export class AlertStore {
 
   refresh(): void {
     this._loading.set(true);
+    this._error.set(null);
+
     setTimeout(() => {
       this._loading.set(false);
+
+      /* Le prototype sert des données locales : le seul échec réaliste est la
+         perte de connexion, qui empêcherait d'atteindre le référentiel. */
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        this._error.set(
+          "Le référentiel des alertes est injoignable : la connexion réseau semble interrompue.",
+        );
+        return;
+      }
+
       this._lastRefreshedAt.set(new Date().toISOString());
     }, LATENCY_MS);
   }

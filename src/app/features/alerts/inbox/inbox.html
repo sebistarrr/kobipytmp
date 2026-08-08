@@ -7,6 +7,7 @@
       class="btn btn--secondary btn--sm"
       (click)="filtersExpanded.set(!filtersExpanded())"
       [attr.aria-expanded]="filtersExpanded()"
+      aria-controls="filtres-avances"
     >
       <app-icon name="filter" [size]="13" />
       Filtres
@@ -24,17 +25,12 @@
   <!-- ══ Barre de filtres ═══════════════════════════════════════════════════ -->
   <div class="fb">
     <div class="fb__row">
-      <label class="fb__search">
-        <app-icon name="search" [size]="15" />
-        <input
-          type="search"
-          class="fb__search-input"
-          placeholder="Rechercher une référence, un client, un analyste…"
-          [value]="filters().search"
-          (input)="onSearch($event)"
-          aria-label="Rechercher dans la file"
-        />
-      </label>
+      <app-search-field
+        [value]="filters().search"
+        placeholder="Rechercher une référence, un client, un analyste…"
+        ariaLabel="Rechercher dans la file d'investigation"
+        (search)="onSearch($event)"
+      />
 
       <select class="select fb__select" [value]="filters().age" (change)="setAge($event)" aria-label="Ancienneté">
         @for (bucket of ageBuckets; track bucket.value) {
@@ -55,12 +51,6 @@
         }
       </select>
 
-      <select class="select fb__select" [value]="filters().sort" (change)="setSort($event)" aria-label="Tri">
-        @for (option of sortOptions; track option.value) {
-          <option [value]="option.value">Trier : {{ option.label }}</option>
-        }
-      </select>
-
       @if (activeFilterCount() > 0) {
         <button type="button" class="btn btn--ghost btn--sm" (click)="resetFilters()">
           <app-icon name="x" [size]="13" />
@@ -70,9 +60,9 @@
     </div>
 
     @if (filtersExpanded()) {
-      <div class="fb__expanded anim-fade-in">
-        <div class="fb__group">
-          <span class="fb__group-label">Dispositif</span>
+      <div class="fb__expanded anim-fade-in" id="filtres-avances">
+        <fieldset class="fb__group">
+          <legend class="fb__group-label">Dispositif</legend>
           <div class="fb__chips">
             @for (type of allTypes; track type) {
               <button
@@ -80,45 +70,48 @@
                 class="chip"
                 [attr.data-variant]="type.toLowerCase()"
                 [class.is-active]="filters().types.includes(type)"
+                [attr.aria-pressed]="filters().types.includes(type)"
                 (click)="toggleType(type)"
               >
                 {{ typeLabel(type) }}
               </button>
             }
           </div>
-        </div>
+        </fieldset>
 
-        <div class="fb__group">
-          <span class="fb__group-label">Priorité</span>
+        <fieldset class="fb__group">
+          <legend class="fb__group-label">Priorité</legend>
           <div class="fb__chips">
             @for (priority of allPriorities; track priority) {
               <button
                 type="button"
                 class="chip"
                 [class.is-active]="filters().priorities.includes(priority)"
+                [attr.aria-pressed]="filters().priorities.includes(priority)"
                 (click)="togglePriority(priority)"
               >
                 {{ priorityLabel(priority) }}
               </button>
             }
           </div>
-        </div>
+        </fieldset>
 
-        <div class="fb__group">
-          <span class="fb__group-label">Statut</span>
+        <fieldset class="fb__group">
+          <legend class="fb__group-label">Statut</legend>
           <div class="fb__chips">
             @for (status of allStatuses; track status) {
               <button
                 type="button"
                 class="chip"
                 [class.is-active]="filters().statuses.includes(status)"
+                [attr.aria-pressed]="filters().statuses.includes(status)"
                 (click)="toggleStatus(status)"
               >
                 {{ statusLabel(status) }}
               </button>
             }
           </div>
-        </div>
+        </fieldset>
       </div>
     }
   </div>
@@ -127,7 +120,7 @@
 <div class="inbox">
   <!-- ══ Barre d'actions de masse ══════════════════════════════════════════ -->
   @if (selection().size > 0) {
-    <div class="inbox__bulk anim-fade-in-up">
+    <div class="inbox__bulk anim-fade-in-up" role="region" aria-label="Actions sur la sélection">
       <span class="inbox__bulk-count">
         {{ selection().size }} alerte{{ selection().size > 1 ? 's' : '' }} sélectionnée{{
           selection().size > 1 ? 's' : ''
@@ -150,7 +143,12 @@
 
       <div class="inbox__bulk-spacer"></div>
 
-      <button type="button" class="btn btn--ghost btn--icon btn--sm" (click)="clearSelection()" aria-label="Annuler la sélection">
+      <button
+        type="button"
+        class="btn btn--ghost btn--icon btn--sm"
+        (click)="clearSelection()"
+        aria-label="Annuler la sélection"
+      >
         <app-icon name="x" [size]="14" />
       </button>
     </div>
@@ -158,7 +156,13 @@
 
   <!-- ══ Tableau ═══════════════════════════════════════════════════════════ -->
   <section class="panel inbox__panel">
-    @if (store.loading()) {
+    @if (store.error(); as error) {
+      <app-error-state
+        title="File indisponible"
+        [message]="error"
+        (retry)="store.refresh()"
+      />
+    } @else if (store.loading()) {
       <app-table-skeleton [rowCount]="10" [columns]="[30, 45, 40, 75, 35, 50, 30, 45, 55, 40]" />
     } @else if (paged().length === 0) {
       <app-empty-state
@@ -175,6 +179,11 @@
     } @else {
       <div class="inbox__table-wrap">
         <table class="dt inbox__table">
+          <caption class="sr-only">
+            File d'investigation — {{ total() }} alertes, triées par
+            {{ sortLabel() }}
+          </caption>
+
           <thead>
             <tr>
               <th class="dt__accent"></th>
@@ -188,17 +197,32 @@
                   aria-label="Tout sélectionner sur cette page"
                 />
               </th>
-              <th>Alerte</th>
-              <th>Priorité</th>
-              <th>Type</th>
-              <th>Client</th>
-              <th class="dt__num">Score</th>
-              <th>Génération</th>
+
+              @for (column of columns; track column.key) {
+                <th
+                  class="is-sortable"
+                  [class.dt__num]="column.numeric"
+                  [attr.aria-sort]="ariaSort(column.key)"
+                >
+                  <button type="button" class="dt__sort" (click)="toggleSort(column.key)">
+                    {{ column.label }}
+                    <app-icon
+                      class="dt__sort-icon"
+                      [class.is-active]="sort().key === column.key"
+                      [name]="
+                        sort().key === column.key && sort().dir === 'asc' ? 'chevron-up' : 'chevron-down'
+                      "
+                      [size]="12"
+                      [strokeWidth]="2.4"
+                    />
+                  </button>
+                </th>
+              }
+
               <th>Âge</th>
-              <th>Statut</th>
               <th>Affectation</th>
               <th>Dernière action</th>
-              <th></th>
+              <th><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
 
@@ -206,9 +230,16 @@
             @for (alert of paged(); track alert.id) {
               <tr
                 class="is-clickable"
+                tabindex="0"
+                role="link"
+                [attr.aria-label]="
+                  'Ouvrir ' + alert.reference + ', ' + alert.client.firstName + ' ' + alert.client.lastName
+                "
                 [class.is-selected]="isSelected(alert.id)"
                 [class.is-active]="previewId() === alert.id"
                 (click)="openAlert(alert)"
+                (keydown.enter)="openAlert(alert)"
+                (keydown.space)="onRowSpace(alert, $event)"
               >
                 <td
                   class="dt__accent"
@@ -231,6 +262,7 @@
                   @if (alert.reopenCount > 0) {
                     <span class="inbox__reopen" title="Alerte rouverte">
                       <app-icon name="rotate" [size]="11" />
+                      <span class="sr-only">Alerte rouverte</span>
                     </span>
                   }
                 </td>
@@ -239,45 +271,37 @@
                 <td><app-type-badge [type]="alert.type" size="sm" /></td>
 
                 <td>
-                  <div class="inbox__client">
-                    <span class="inbox__client-name truncate">
-                      {{ alert.client.firstName }} {{ alert.client.lastName }}
-                    </span>
-                    <span class="inbox__client-meta truncate">
-                      {{ alert.client.reference }} · rapproché de {{ alert.profile.firstName }}
-                      {{ alert.profile.lastName }}
-                    </span>
-                  </div>
+                  <app-party-cell
+                    [name]="alert.client.firstName + ' ' + alert.client.lastName"
+                    [meta]="
+                      alert.client.reference +
+                      ' · rapproché de ' +
+                      alert.profile.firstName +
+                      ' ' +
+                      alert.profile.lastName
+                    "
+                  />
                 </td>
 
-                <td class="dt__num">
-                  <span class="inbox__score" [attr.data-band]="scoreBandOf(alert)">
-                    {{ alert.match.score }} %
-                  </span>
-                </td>
+                <td class="dt__num"><app-score-cell [score]="alert.match.score" /></td>
 
                 <td class="inbox__nowrap">{{ alert.generatedAt | frDate }}</td>
-
-                <td>
-                  <span class="inbox__age" [class.is-late]="isLate(alert)">
-                    @if (isLate(alert)) {
-                      <app-icon name="clock" [size]="12" />
-                    }
-                    {{ alert.generatedAt | age }}
-                  </span>
-                </td>
 
                 <td><app-status-badge [status]="alert.status" size="sm" /></td>
 
                 <td>
-                  @if (alert.assignment; as assignment) {
-                    <span class="inbox__analyst">
-                      <app-avatar [name]="assignment.userName" [hue]="assignment.userHue" size="xs" />
-                      <span class="truncate">{{ assignment.userName }}</span>
-                    </span>
-                  } @else {
-                    <span class="inbox__unassigned">Non affectée</span>
-                  }
+                  <app-age-cell
+                    [since]="alert.generatedAt"
+                    [late]="isLate(alert)"
+                    [slaHours]="slaHoursFor(alert)"
+                  />
+                </td>
+
+                <td>
+                  <app-analyst-cell
+                    [name]="alert.assignment?.userName ?? null"
+                    [hue]="alert.assignment?.userHue ?? 232"
+                  />
                 </td>
 
                 <td>
@@ -306,7 +330,7 @@
 
       <!-- ══ Pagination ══════════════════════════════════════════════════ -->
       <footer class="inbox__foot">
-        <span class="inbox__range">
+        <span class="inbox__range" aria-live="polite">
           {{ rangeStart() }}–{{ rangeEnd() }} sur {{ total() }} alerte{{ total() > 1 ? 's' : '' }}
         </span>
 

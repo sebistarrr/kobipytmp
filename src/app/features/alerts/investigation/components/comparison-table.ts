@@ -10,8 +10,8 @@ import {
   type ProfileAlias,
   type ScreeningProfile,
 } from '../../../../core/models';
-import { IconComponent, type IconName } from '../../../../shared/ui/icon/icon';
-import { formatComparisonValue } from '../../../../shared/util/display';
+import { IconComponent } from '../../../../shared/ui/icon/icon';
+import { comparisonIcon, formatComparisonValue } from '../../../../shared/util/display';
 
 /**
  * Comparateur attribut par attribut.
@@ -361,18 +361,5 @@ export class ComparisonTableComponent {
     return COMPARISON_RESULT_META[result].label;
   }
 
-  protected iconOf(result: ComparisonResult): IconName {
-    switch (COMPARISON_RESULT_META[result].icon) {
-      case 'check':
-        return 'check';
-      case 'approx':
-        return 'approx';
-      case 'cross':
-        return 'x';
-      case 'minus':
-        return 'minus';
-      case 'question':
-        return 'question';
-    }
-  }
+  protected readonly iconOf = comparisonIcon;
 }

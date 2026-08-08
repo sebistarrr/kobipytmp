@@ -93,17 +93,21 @@ interface NavEntry {
         </div>
       }
 
-      <button
-        type="button"
-        class="sb__collapse"
-        (click)="layout.toggleSidebar()"
-        [attr.aria-label]="collapsed() ? 'Déployer le menu' : 'Réduire le menu'"
-      >
-        <app-icon [name]="collapsed() ? 'chevron-right' : 'chevron-left'" [size]="15" />
-        @if (!collapsed()) {
-          <span>Réduire</span>
-        }
-      </button>
+      <!-- Masqué lorsque la largeur impose déjà le repli : le bouton n'aurait
+           alors aucun effet visible. -->
+      @if (!layout.railCollapseForced()) {
+        <button
+          type="button"
+          class="sb__collapse"
+          (click)="layout.toggleSidebar()"
+          [attr.aria-label]="collapsed() ? 'Déployer le menu' : 'Réduire le menu'"
+        >
+          <app-icon [name]="collapsed() ? 'chevron-right' : 'chevron-left'" [size]="15" />
+          @if (!collapsed()) {
+            <span>Réduire</span>
+          }
+        </button>
+      }
     </nav>
   `,
   styles: `
@@ -315,7 +319,7 @@ export class SidebarComponent {
   private readonly auth = inject(AuthService);
   private readonly store = inject(AlertStore);
 
-  protected readonly collapsed = this.layout.sidebarCollapsed;
+  protected readonly collapsed = this.layout.railCollapsed;
   protected readonly overdue = computed(() => this.store.overdueAlerts().length);
 
   protected readonly primaryNav = computed<NavEntry[]>(() => {

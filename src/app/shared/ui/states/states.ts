@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { IconComponent, type IconName } from '../icon/icon';
 
@@ -186,47 +186,8 @@ export class TableSkeletonComponent {
   /** Largeurs relatives des cellules, en pourcentage de leur colonne. */
   readonly columns = input<readonly number[]>([70, 45, 85, 60, 40, 55, 35]);
 
-  protected readonly rows = () => Array.from({ length: this.rowCount() });
-  protected readonly template = () => `repeat(${this.columns().length}, 1fr)`;
-}
-
-/* -----------------------------------------------------------------------------
-   Bloc de chargement générique
-   -------------------------------------------------------------------------- */
-@Component({
-  selector: 'app-loading-state',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="load" role="status" [attr.aria-label]="label()">
-      <span class="load__spinner"></span>
-      <span class="load__label">{{ label() }}</span>
-    </div>
-  `,
-  styles: `
-    .load {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: var(--sp-3);
-      padding: var(--sp-12);
-    }
-
-    .load__spinner {
-      width: 22px;
-      height: 22px;
-      border-radius: var(--r-full);
-      border: 2px solid var(--border-default);
-      border-top-color: var(--accent);
-      animation: spin 700ms linear infinite;
-    }
-
-    .load__label {
-      font-size: var(--fs-sm);
-      color: var(--text-tertiary);
-    }
-  `,
-})
-export class LoadingStateComponent {
-  readonly label = input('Chargement…');
+  /* `computed` plutôt que des méthodes : sans cela chaque cycle de rendu
+     produisait de nouveaux tableaux, invalidant inutilement la boucle @for. */
+  protected readonly rows = computed(() => Array.from({ length: this.rowCount() }));
+  protected readonly template = computed(() => `repeat(${this.columns().length}, 1fr)`);
 }

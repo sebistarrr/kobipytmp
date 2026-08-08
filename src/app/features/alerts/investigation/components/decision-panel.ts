@@ -177,12 +177,12 @@ const MIN_COMMENT = 20;
               </div>
 
               <div class="field">
-                <label class="field__label" for="decision-comment">
+                <label class="field__label" [attr.for]="commentId">
                   Motivation de la décision
                   <span class="dp__required">obligatoire</span>
                 </label>
                 <textarea
-                  id="decision-comment"
+                  [id]="commentId"
                   class="textarea"
                   [class.is-invalid]="attempted() && !commentValid()"
                   [placeholder]="placeholderFor(option)"
@@ -321,6 +321,14 @@ export class DecisionPanelComponent {
   readonly escalate = output<string>();
 
   protected readonly minComment = MIN_COMMENT;
+
+  /**
+   * Le panneau est monté deux fois — dans le rail latéral et dans le tiroir
+   * mobile. Un identifiant fixe produirait deux `id` identiques dans le
+   * document, ce qui casse l'association entre le libellé et le champ.
+   */
+  private static instances = 0;
+  protected readonly commentId = `decision-comment-${++DecisionPanelComponent.instances}`;
 
   protected readonly selected = signal<DecisionOption | null>(null);
   protected readonly comment = signal('');
