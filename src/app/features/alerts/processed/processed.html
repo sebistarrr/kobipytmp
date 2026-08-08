@@ -1,0 +1,307 @@
+<app-page-header
+  title="Alertes traitées"
+  subtitle="Registre des décisions prononcées sur le périmètre. Chaque entrée est adossée à son historique d'audit."
+  [sticky]="true"
+>
+  <div headerActions class="pr__head-actions">
+    @if (auth.has('reporting:export')) {
+      <button type="button" class="btn btn--secondary btn--sm">
+        <app-icon name="download" [size]="13" />
+        Exporter
+      </button>
+    }
+  </div>
+
+  <!-- Répartition des décisions -->
+  <div class="pr__summary">
+    <div class="pr__stat">
+      <span class="pr__stat-value">{{ counts().total }}</span>
+      <span class="pr__stat-label">Total traitées</span>
+    </div>
+    <div class="divider--v"></div>
+    <div class="pr__stat" style="--tone: var(--success)">
+      <span class="pr__stat-value">{{ counts().homonym }}</span>
+      <span class="pr__stat-label">Homonymes</span>
+    </div>
+    <div class="pr__stat" style="--tone: var(--info)">
+      <span class="pr__stat-value">{{ counts().neutralized }}</span>
+      <span class="pr__stat-label">Neutralisées</span>
+    </div>
+    <div class="pr__stat" style="--tone: var(--critical)">
+      <span class="pr__stat-value">{{ counts().confirmed }}</span>
+      <span class="pr__stat-label">Avérées</span>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="pr__filters">
+    <label class="pr__search">
+      <app-icon name="search" [size]="15" />
+      <input
+        type="search"
+        class="pr__search-input"
+        placeholder="Référence, client, analyste…"
+        [value]="search()"
+        (input)="onSearch($event)"
+        aria-label="Rechercher parmi les alertes traitées"
+      />
+    </label>
+
+    <select class="select pr__select" [value]="decisionFilter()" (change)="onDecision($event)" aria-label="Décision">
+      <option value="">Toutes les décisions</option>
+      @for (decision of allDecisions; track decision) {
+        <option [value]="decision">{{ decisionLabel(decision) }}</option>
+      }
+    </select>
+
+    <select class="select pr__select" [value]="typeFilter()" (change)="onType($event)" aria-label="Dispositif">
+      <option value="">Tous les dispositifs</option>
+      @for (type of allTypes; track type) {
+        <option [value]="type">{{ typeLabel(type) }}</option>
+      }
+    </select>
+
+    <select class="select pr__select" [value]="levelFilter()" (change)="onLevel($event)" aria-label="Niveau de traitement">
+      <option value="">Tous les niveaux</option>
+      <option value="1">Niveau 1</option>
+      <option value="2">Niveau 2</option>
+    </select>
+
+    <select class="select pr__select" [value]="sort()" (change)="onSort($event)" aria-label="Tri">
+      @for (option of sortOptions; track option.value) {
+        <option [value]="option.value">Trier : {{ option.label }}</option>
+      }
+    </select>
+
+    @if (hasFilters()) {
+      <button type="button" class="btn btn--ghost btn--sm" (click)="resetFilters()">
+        <app-icon name="x" [size]="13" />
+        Réinitialiser
+      </button>
+    }
+  </div>
+</app-page-header>
+
+<div class="pr">
+  <section class="panel">
+    @if (store.loading()) {
+      <app-table-skeleton [rowCount]="9" [columns]="[70, 40, 50, 35, 55, 50, 40, 35]" />
+    } @else if (sorted().length === 0) {
+      <app-empty-state
+        [icon]="hasFilters() ? 'filter' : 'archive'"
+        [title]="hasFilters() ? 'Aucune alerte traitée ne correspond' : 'Aucune alerte traitée'"
+        [message]="
+          hasFilters()
+            ? 'Élargissez les critères pour retrouver des décisions.'
+            : 'Les alertes clôturées apparaîtront ici, avec leur décision et leur historique.'
+        "
+        [actionLabel]="hasFilters() ? 'Réinitialiser les filtres' : ''"
+        (action)="resetFilters()"
+      />
+    } @else {
+      <div class="pr__table-wrap">
+        <table class="dt pr__table">
+          <thead>
+            <tr>
+              <th class="dt__accent"></th>
+              <th>Alerte</th>
+              <th>Client</th>
+              <th>Type</th>
+              <th>Décision</th>
+              <th>Niveau</th>
+              <th>Analyste</th>
+              <th>Date de décision</th>
+              <th>Durée</th>
+              <th class="dt__num">Score</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (alert of sorted(); track alert.id) {
+              <tr class="is-clickable" (click)="openAlert(alert)">
+                <td class="dt__accent" [style.background]="'var(' + decisionColor(alert) + ')'"></td>
+
+                <td>
+                  <span class="pr__ref mono">{{ alert.reference }}</span>
+                  @if (alert.reopenCount > 0) {
+                    <span class="pr__reopened" [title]="alert.reopenCount + ' réouverture(s)'">
+                      <app-icon name="rotate" [size]="11" />
+                      {{ alert.reopenCount }}
+                    </span>
+                  }
+                </td>
+
+                <td>
+                  <div class="pr__client">
+                    <span class="pr__client-name truncate">
+                      {{ alert.client.firstName }} {{ alert.client.lastName }}
+                    </span>
+                    <span class="pr__client-meta truncate">{{ alert.client.reference }}</span>
+                  </div>
+                </td>
+
+                <td><app-type-badge [type]="alert.type" size="sm" /></td>
+
+                <td>
+                  @if (alert.resolution; as resolution) {
+                    <app-decision-badge [decision]="resolution.decision" size="sm" />
+                  }
+                </td>
+
+                <td>
+                  @if (alert.resolution; as resolution) {
+                    <span class="pr__level">Niveau {{ resolution.level }}</span>
+                  }
+                </td>
+
+                <td>
+                  @if (alert.resolution; as resolution) {
+                    <span class="pr__analyst">
+                      <app-avatar
+                        [name]="resolution.decidedByName"
+                        [hue]="alert.assignment?.userHue ?? 232"
+                        size="xs"
+                      />
+                      <span class="truncate">{{ resolution.decidedByName }}</span>
+                    </span>
+                  }
+                </td>
+
+                <td class="pr__nowrap">
+                  @if (alert.resolution; as resolution) {
+                    <div class="pr__date">
+                      <span>{{ resolution.decidedAt | frDateTime }}</span>
+                      <span class="pr__date-age">{{ resolution.decidedAt | age }}</span>
+                    </div>
+                  }
+                </td>
+
+                <td class="pr__nowrap">{{ duration(alert) | duration }}</td>
+
+                <td class="dt__num">
+                  <span class="pr__score" [attr.data-band]="scoreBandOf(alert)">
+                    {{ alert.match.score }} %
+                  </span>
+                </td>
+
+                <td class="pr__row-actions" (click)="$event.stopPropagation()">
+                  <button
+                    type="button"
+                    class="btn btn--ghost btn--icon btn--sm"
+                    (click)="openPreview(alert, $event)"
+                    [attr.aria-label]="'Aperçu de ' + alert.reference"
+                    title="Aperçu"
+                  >
+                    <app-icon name="eye" [size]="14" />
+                  </button>
+
+                  @if (canReopen()) {
+                    <button
+                      type="button"
+                      class="btn btn--ghost btn--icon btn--sm"
+                      (click)="askReopen(alert, $event)"
+                      [attr.aria-label]="'Rouvrir ' + alert.reference"
+                      title="Rouvrir l'alerte"
+                    >
+                      <app-icon name="rotate" [size]="14" />
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+<!-- ══ Aperçu ═══════════════════════════════════════════════════════════════ -->
+<app-drawer
+  [open]="previewAlert() !== null"
+  [title]="previewAlert()?.reference ?? ''"
+  [subtitle]="
+    previewAlert() ? previewAlert()!.client.firstName + ' ' + previewAlert()!.client.lastName : ''
+  "
+  (close)="previewId.set(null)"
+>
+  @if (previewAlert(); as alert) {
+    <app-alert-preview [alert]="alert" />
+  }
+</app-drawer>
+
+<!-- ══ Confirmation de réouverture ══════════════════════════════════════════ -->
+<app-modal
+  [open]="reopenTarget() !== null"
+  title="Rouvrir l'alerte"
+  [subtitle]="
+    reopenTarget()
+      ? reopenTarget()!.reference + ' — ' + reopenTarget()!.client.firstName + ' ' + reopenTarget()!.client.lastName
+      : ''
+  "
+  tone="danger"
+  (close)="cancelReopen()"
+>
+  @if (reopenTarget(); as alert) {
+    <div class="reopen">
+      <p class="reopen__intro">
+        La réouverture annule la clôture et replace l'alerte dans la file de traitement. La décision
+        précédente reste consultable dans l'historique : elle n'est jamais effacée.
+      </p>
+
+      @if (alert.resolution; as resolution) {
+        <div class="reopen__previous">
+          <div class="reopen__previous-head">
+            <span class="meta-label">Décision annulée</span>
+            <app-decision-badge [decision]="resolution.decision" size="sm" />
+          </div>
+          <dl class="reopen__facts">
+            <div><dt>Prononcée par</dt><dd>{{ resolution.decidedByName }} (niveau {{ resolution.level }})</dd></div>
+            <div><dt>Le</dt><dd>{{ resolution.decidedAt | frDateTime }}</dd></div>
+          </dl>
+          <p class="reopen__previous-comment">{{ resolution.comment }}</p>
+        </div>
+      }
+
+      <div class="field">
+        <label class="field__label" for="reopen-reason">
+          Motif de réouverture <span class="reopen__required">obligatoire</span>
+        </label>
+        <textarea
+          id="reopen-reason"
+          class="textarea"
+          [class.is-invalid]="reopenAttempted() && !reasonValid()"
+          placeholder="Décrivez l'élément nouveau qui justifie le réexamen : mise à jour de liste, pièce complémentaire, signalement interne…"
+          [value]="reopenReason()"
+          (input)="onReasonInput($event)"
+        ></textarea>
+
+        @if (reopenAttempted() && !reasonValid()) {
+          <p class="field__error">
+            Le motif doit compter au moins 20 caractères. Il constitue la justification réglementaire
+            de la réouverture.
+          </p>
+        } @else {
+          <p class="field__hint">{{ reopenReason().trim().length }} caractère(s) — minimum 20.</p>
+        }
+      </div>
+
+      <div class="audit-note">
+        <app-icon name="lock" [size]="14" />
+        <span>
+          Cette action sera enregistrée dans l'historique d'audit, horodatée et rattachée à votre
+          identité.
+        </span>
+      </div>
+    </div>
+  }
+
+  <ng-container modalFooter>
+    <button type="button" class="btn btn--ghost" (click)="cancelReopen()">Annuler</button>
+    <button type="button" class="btn btn--danger" (click)="confirmReopen()">
+      <app-icon name="rotate" [size]="14" />
+      Confirmer la réouverture
+    </button>
+  </ng-container>
+</app-modal>

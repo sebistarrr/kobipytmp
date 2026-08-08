@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vigilance — Plateforme LCB-FT</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Plateforme de traitement des alertes de screening LCB-FT : sanctions, PEP et RCA."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      // Applique le thème mémorisé avant le premier rendu pour éviter tout flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem('vigilance.theme');
+          document.documentElement.dataset.theme =
+            stored === 'light' || stored === 'dark' ? stored : 'dark';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

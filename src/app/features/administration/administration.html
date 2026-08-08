@@ -1,0 +1,355 @@
+<app-page-header
+  title="Administration"
+  eyebrow="Paramétrage du dispositif"
+  subtitle="Habilitations, périmètres et réglages du moteur de screening. Les droits présentés ici sont ceux appliqués par l'application ; le contrôle effectif reste assuré par le backend."
+>
+  <div headerActions>
+    @if (!canAdminister()) {
+      <span class="ad__readonly">
+        <app-icon name="eye" [size]="13" />
+        Consultation seule
+      </span>
+    }
+  </div>
+
+  <nav class="ad__tabs" role="tablist">
+    @for (item of tabs; track item.id) {
+      <button
+        type="button"
+        class="ad__tab"
+        role="tab"
+        [class.is-active]="tab() === item.id"
+        [attr.aria-selected]="tab() === item.id"
+        (click)="tab.set(item.id)"
+      >
+        <app-icon [name]="item.icon" [size]="14" />
+        {{ item.label }}
+      </button>
+    }
+  </nav>
+</app-page-header>
+
+<div class="ad">
+  <!-- ══ Utilisateurs ═════════════════════════════════════════════════════ -->
+  @if (tab() === 'users') {
+    <section class="ad__stats anim-fade-in">
+      <div class="ad__stat">
+        <span class="ad__stat-value">{{ userStats().total }}</span>
+        <span class="ad__stat-label">Comptes</span>
+      </div>
+      <div class="ad__stat">
+        <span class="ad__stat-value">{{ userStats().active }}</span>
+        <span class="ad__stat-label">Actifs</span>
+      </div>
+      <div class="ad__stat">
+        <span class="ad__stat-value">{{ userStats().level1 }}</span>
+        <span class="ad__stat-label">Niveau 1</span>
+      </div>
+      <div class="ad__stat">
+        <span class="ad__stat-value">{{ userStats().level2 }}</span>
+        <span class="ad__stat-label">Niveau 2</span>
+      </div>
+      <div class="ad__stat">
+        <span class="ad__stat-value">{{ userStats().admins }}</span>
+        <span class="ad__stat-label">Administrateurs</span>
+      </div>
+    </section>
+
+    <section class="panel anim-fade-in">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="users" [size]="15" />
+            Utilisateurs habilités
+          </h2>
+          <p class="panel__subtitle">
+            Les comptes proviennent du fournisseur d'identité du groupe et ne sont pas créés ici
+          </p>
+        </div>
+      </header>
+
+      <div class="ad__table-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Fonction</th>
+              <th>Niveau</th>
+              <th>Filiale</th>
+              <th class="dt__num">Dossiers en cours</th>
+              <th>État</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr [class.ad__row--inactive]="!user.active">
+                <td>
+                  <span class="ad__user">
+                    <app-avatar [name]="user.fullName" [hue]="user.avatarHue" size="sm" />
+                    <span class="ad__user-body">
+                      <span class="ad__user-name">{{ user.fullName }}</span>
+                      <span class="ad__user-mail">{{ user.email }}</span>
+                    </span>
+                  </span>
+                </td>
+                <td>{{ user.jobTitle }}</td>
+                <td><app-level-badge [level]="user.level" /></td>
+                <td>
+                  <span class="ad__sub">
+                    <span class="ad__sub-code mono">{{ user.subsidiaryCode }}</span>
+                    <span class="ad__sub-name truncate">{{ user.subsidiaryName }}</span>
+                  </span>
+                </td>
+                <td class="dt__num">{{ user.openLoad }}</td>
+                <td>
+                  @if (user.active) {
+                    <span class="ad__state" data-tone="active">
+                      <span class="dot"></span>
+                      Actif
+                    </span>
+                  } @else {
+                    <span class="ad__state" data-tone="inactive">
+                      <span class="dot"></span>
+                      Désactivé
+                      @if (user.lastSeenAt) {
+                        <span class="ad__state-since">depuis le {{ user.lastSeenAt | frDate }}</span>
+                      }
+                    </span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <!-- ══ Filiales ═════════════════════════════════════════════════════════ -->
+  @if (tab() === 'subsidiaries') {
+    <section class="ad__subsidiaries anim-fade-in">
+      @for (subsidiary of subsidiaries(); track subsidiary.id) {
+        <article class="card ad__sub-card" [class.is-active]="subsidiary.isActive">
+          <header class="ad__sub-head">
+            <span class="ad__sub-flag">{{ subsidiary.countryCode }}</span>
+            <div class="ad__sub-titles">
+              <h3 class="ad__sub-title">{{ subsidiary.name }}</h3>
+              <p class="ad__sub-meta">
+                <span class="mono">{{ subsidiary.code }}</span>
+                ·
+                {{ subsidiary.country }}
+              </p>
+            </div>
+            @if (subsidiary.isActive) {
+              <span class="ad__sub-current">Périmètre actif</span>
+            }
+          </header>
+
+          <dl class="ad__sub-facts">
+            <div>
+              <dt>Régulateur</dt>
+              <dd>{{ subsidiary.regulator }}</dd>
+            </div>
+            <div>
+              <dt>Analystes</dt>
+              <dd>{{ subsidiary.analysts }}</dd>
+            </div>
+            <div>
+              <dt>Alertes</dt>
+              <dd>{{ subsidiary.total }}</dd>
+            </div>
+            <div>
+              <dt>En attente</dt>
+              <dd [class.ad__warn]="subsidiary.open > 0">{{ subsidiary.open }}</dd>
+            </div>
+          </dl>
+        </article>
+      }
+    </section>
+  }
+
+  <!-- ══ Matrice des droits ═══════════════════════════════════════════════ -->
+  @if (tab() === 'permissions') {
+    <section class="ad__levels anim-fade-in">
+      @for (level of levels; track level) {
+        <article class="card ad__level-card">
+          <app-level-badge [level]="level" size="md" />
+          <p class="ad__level-desc">{{ levelDescription(level) }}</p>
+        </article>
+      }
+    </section>
+
+    <section class="panel anim-fade-in">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="lock" [size]="15" />
+            Matrice des droits
+          </h2>
+          <p class="panel__subtitle">
+            Le frontend masque les actions non autorisées ; il ne constitue pas une couche de
+            sécurité. Chaque appel est revalidé côté serveur.
+          </p>
+        </div>
+      </header>
+
+      <div class="ad__table-wrap">
+        <table class="dt ad__matrix">
+          <thead>
+            <tr>
+              <th>Action</th>
+              @for (level of levels; track level) {
+                <th class="ad__matrix-col">{{ levelLabel(level) }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (group of permissionGroups; track group.label) {
+              <tr class="ad__matrix-group">
+                <td [attr.colspan]="levels.length + 1">{{ group.label }}</td>
+              </tr>
+              @for (permission of group.permissions; track permission) {
+                <tr>
+                  <td class="ad__matrix-label">{{ permissionLabel(permission) }}</td>
+                  @for (level of levels; track level) {
+                    <td class="ad__matrix-col">
+                      @if (grants(level, permission)) {
+                        <span class="ad__grant" data-granted>
+                          <app-icon name="check" [size]="13" [strokeWidth]="2.6" />
+                        </span>
+                      } @else {
+                        <span class="ad__grant">
+                          <app-icon name="minus" [size]="13" />
+                        </span>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  <!-- ══ Paramétrage du screening ═════════════════════════════════════════ -->
+  @if (tab() === 'screening') {
+    <section class="panel anim-fade-in">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="target" [size]="15" />
+            Seuils de déclenchement
+          </h2>
+          <p class="panel__subtitle">
+            En dessous du seuil minimal, aucune alerte n'est générée. Relever un seuil réduit le
+            bruit mais augmente le risque de non-détection.
+          </p>
+        </div>
+      </header>
+
+      <div class="ad__table-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th class="dt__accent"></th>
+              <th>Dispositif</th>
+              <th class="dt__num">Seuil de génération</th>
+              <th class="dt__num">Clôture automatique</th>
+              <th>Fréquence</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of thresholds; track row.type) {
+              <tr>
+                <td class="dt__accent" [style.background]="'var(' + typeMeta(row.type).colorVar + ')'"></td>
+                <td>
+                  <div class="ad__type">
+                    <span class="ad__type-name">{{ typeMeta(row.type).label }}</span>
+                    <span class="ad__type-full">{{ typeMeta(row.type).fullLabel }}</span>
+                  </div>
+                </td>
+                <td class="dt__num">≥ {{ row.minScore }} %</td>
+                <td class="dt__num">
+                  @if (row.autoClose) {
+                    &lt; {{ row.autoClose }} %
+                  } @else {
+                    <span class="ad__none">aucune</span>
+                  }
+                </td>
+                <td>{{ row.frequency }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel anim-fade-in">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="clock" [size]="15" />
+            Délais de traitement attendus
+          </h2>
+          <p class="panel__subtitle">
+            Au-delà du délai, l'alerte est signalée comme hors délai dans les files et le reporting
+          </p>
+        </div>
+      </header>
+      <div class="panel__body">
+        <div class="ad__sla-grid">
+          @for (priority of priorities; track priority) {
+            <div class="ad__sla" [style.--tone]="'var(' + priorityMeta(priority).colorVar + ')'">
+              <span class="ad__sla-label">{{ priorityMeta(priority).label }}</span>
+              <span class="ad__sla-value">{{ priorityMeta(priority).slaHours }} h</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="panel anim-fade-in">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="layers" [size]="15" />
+            Listes de référence
+          </h2>
+          <p class="panel__subtitle">Sources interrogées par le moteur de screening</p>
+        </div>
+      </header>
+
+      <div class="ad__table-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Liste</th>
+              <th>Autorité</th>
+              <th class="dt__num">Enregistrements</th>
+              <th>Dernière mise à jour</th>
+              <th>État</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (list of lists; track list.name) {
+              <tr>
+                <td class="ad__list-name">{{ list.name }}</td>
+                <td>{{ list.authority }}</td>
+                <td class="dt__num">{{ list.records.toLocaleString('fr-FR') }}</td>
+                <td>{{ list.updatedAt | frDate }}</td>
+                <td>
+                  <span class="ad__state" data-tone="active">
+                    <span class="dot"></span>
+                    Synchronisée
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

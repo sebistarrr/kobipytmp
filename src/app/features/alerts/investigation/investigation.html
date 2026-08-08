@@ -1,0 +1,327 @@
+@if (alert(); as alert) {
+  <!-- ══ En-tête permanent ═════════════════════════════════════════════════ -->
+  <header class="iv__header">
+    <div class="iv__header-top">
+      <a class="iv__back" routerLink="/alertes/a-traiter">
+        <app-icon name="arrow-left" [size]="14" />
+        File d'investigation
+      </a>
+
+      @if (neighbours().index >= 0) {
+        <div class="iv__queue">
+          <button
+            type="button"
+            class="btn btn--ghost btn--icon btn--sm"
+            [disabled]="!neighbours().previous"
+            (click)="goPrevious()"
+            aria-label="Alerte précédente"
+            title="Alerte précédente (K)"
+          >
+            <app-icon name="chevron-left" [size]="14" />
+          </button>
+          <span class="iv__queue-label">
+            {{ neighbours().index + 1 }} / {{ neighbours().total }}
+          </span>
+          <button
+            type="button"
+            class="btn btn--ghost btn--icon btn--sm"
+            [disabled]="!neighbours().next"
+            (click)="goNext()"
+            aria-label="Alerte suivante"
+            title="Alerte suivante (J)"
+          >
+            <app-icon name="chevron-right" [size]="14" />
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="iv__identity">
+      <div class="iv__identity-main">
+        <div class="iv__ref-row">
+          <h1 class="iv__ref">
+            Alerte <span class="mono">{{ alert.reference }}</span>
+          </h1>
+          <app-type-badge [type]="alert.type" size="lg" />
+          <app-risk-badge [priority]="alert.priority" size="lg" />
+          <app-status-badge [status]="alert.status" size="lg" />
+          @if (alert.reopenCount > 0) {
+            <span class="iv__reopen-tag">
+              <app-icon name="rotate" [size]="11" />
+              Rouverte {{ alert.reopenCount }}×
+            </span>
+          }
+        </div>
+
+        <p class="iv__client-line">
+          <app-icon name="user" [size]="13" />
+          <strong>{{ alert.client.firstName }} {{ alert.client.lastName }}</strong>
+          <span class="iv__sep">·</span>
+          <span class="mono">{{ alert.client.reference }}</span>
+          <span class="iv__sep">·</span>
+          rapprochée de <strong>{{ alert.profile.firstName }} {{ alert.profile.lastName }}</strong>
+          <span class="iv__sep">·</span>
+          <span class="mono">{{ alert.profile.providerId }}</span>
+        </p>
+
+        <div class="iv__meta">
+          <span class="iv__meta-item">
+            <app-icon name="calendar" [size]="12" />
+            Générée le {{ alert.generatedAt | frDateTime }}
+          </span>
+
+          <span class="iv__meta-item" [class.is-late]="isLate()">
+            <app-icon name="clock" [size]="12" />
+            {{ alert.generatedAt | age }}
+            @if (isLate()) {
+              <span class="iv__late-tag">hors délai ({{ slaHours() }} h attendues)</span>
+            }
+          </span>
+
+          @if (alert.assignment; as assignment) {
+            <span class="iv__meta-item">
+              <app-avatar [name]="assignment.userName" [hue]="assignment.userHue" size="xs" />
+              {{ assignment.userName }}
+            </span>
+          } @else {
+            <span class="iv__meta-item iv__meta-item--muted">
+              <app-icon name="user" [size]="12" />
+              Non affectée
+            </span>
+          }
+
+          <span class="iv__meta-item iv__meta-item--muted">
+            <app-icon name="radar" [size]="12" />
+            {{ alert.triggeredBy }}
+          </span>
+        </div>
+      </div>
+
+      <div class="iv__identity-score">
+        <app-match-score [score]="alert.match.score" size="md" />
+      </div>
+    </div>
+
+    <!-- Accès aux colonnes sur écran réduit -->
+    <div class="iv__mobile-tabs">
+      <button type="button" class="btn btn--secondary btn--sm" (click)="mobilePanel.set('client')">
+        <app-icon name="user" [size]="13" />
+        Fiche client
+      </button>
+      <button type="button" class="btn btn--secondary btn--sm" (click)="mobilePanel.set('profile')">
+        <app-icon name="radar" [size]="13" />
+        Fiche screening
+      </button>
+      <button type="button" class="btn btn--primary btn--sm" (click)="mobilePanel.set('decision')">
+        <app-icon name="gavel" [size]="13" />
+        Décision
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ Corps ═════════════════════════════════════════════════════════════ -->
+  <div class="iv">
+    <div class="iv__main">
+      <!-- Les deux identités, côte à côte -->
+      <section class="iv__parties">
+        <app-client-profile [client]="alert.client" />
+        <app-screening-profile [profile]="alert.profile" />
+      </section>
+
+      <!-- Comparateur -->
+      <section class="panel">
+        <header class="panel__head">
+          <div>
+            <h2 class="panel__title">
+              <app-icon name="scale" [size]="15" />
+              Comparaison attribut par attribut
+            </h2>
+            <p class="panel__subtitle">
+              Confrontation des données client et de la fiche
+              @if (selectedAlias(); as alias) {
+                , sur l'alias « {{ alias.fullName }} »
+              }
+            </p>
+          </div>
+        </header>
+        <div class="panel__body panel__body--flush">
+          <app-comparison-table
+            [client]="alert.client"
+            [profile]="alert.profile"
+            [criteria]="alert.match.criteria"
+            [alias]="selectedAlias()"
+          />
+        </div>
+      </section>
+
+      <!-- Alias et décomposition du score -->
+      <section class="iv__analysis">
+        <article class="panel">
+          <header class="panel__head">
+            <div>
+              <h2 class="panel__title">
+                <app-icon name="layers" [size]="15" />
+                Alias de la fiche
+              </h2>
+              <p class="panel__subtitle">
+                {{ alert.profile.aliases.length }} graphie(s) publiée(s) par
+                {{ alert.profile.provider }}
+              </p>
+            </div>
+          </header>
+          <div class="panel__body">
+            <app-alias-list
+              [aliases]="alert.profile.aliases"
+              [selectedId]="selectedAliasId()"
+              (select)="selectAlias($event)"
+            />
+          </div>
+        </article>
+
+        <article class="panel">
+          <header class="panel__head">
+            <div>
+              <h2 class="panel__title">
+                <app-icon name="target" [size]="15" />
+                Détail du score
+              </h2>
+              <p class="panel__subtitle">{{ alert.match.algorithm }}</p>
+            </div>
+            <span class="iv__score-total">{{ alert.match.score }} %</span>
+          </header>
+          <div class="panel__body">
+            <app-match-breakdown [criteria]="alert.match.criteria" />
+          </div>
+        </article>
+      </section>
+
+      <!-- Commentaires et historique -->
+      <section class="panel">
+        <header class="panel__head iv__tabs-head">
+          <div class="iv__tabs" role="tablist">
+            <button
+              type="button"
+              class="iv__tab"
+              role="tab"
+              [class.is-active]="tab() === 'comments'"
+              [attr.aria-selected]="tab() === 'comments'"
+              (click)="tab.set('comments')"
+            >
+              <app-icon name="message" [size]="14" />
+              Commentaires
+              <span class="count-pill">{{ comments().length }}</span>
+            </button>
+
+            <button
+              type="button"
+              class="iv__tab"
+              role="tab"
+              [class.is-active]="tab() === 'audit'"
+              [attr.aria-selected]="tab() === 'audit'"
+              (click)="tab.set('audit')"
+            >
+              <app-icon name="activity" [size]="14" />
+              Historique d'audit
+              <span class="count-pill">{{ auditEvents().length }}</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="panel__body">
+          @if (tab() === 'comments') {
+            <app-comment-thread
+              [comments]="comments()"
+              [canComment]="auth.has('alert:comment')"
+              (submit)="onComment($event)"
+            />
+          } @else {
+            <app-audit-timeline [events]="auditEvents()" />
+          }
+        </div>
+      </section>
+    </div>
+
+    <!-- ══ Rail latéral ════════════════════════════════════════════════════ -->
+    <aside class="iv__rail">
+      <div class="iv__rail-sticky">
+        <!-- Score détaillé -->
+        <section class="panel iv__score-panel">
+          <div class="panel__body iv__score-body">
+            <app-match-score [score]="alert.match.score" size="lg" />
+            <p class="iv__score-caption">
+              Score de rapprochement calculé le {{ alert.match.computedAt | frDateTime }}
+            </p>
+          </div>
+        </section>
+
+        <!-- Affectation -->
+        <section class="panel">
+          <header class="panel__head">
+            <h2 class="panel__title">
+              <app-icon name="user-check" [size]="15" />
+              Affectation
+            </h2>
+          </header>
+          <div class="panel__body">
+            <app-assignment-selector [assignment]="alert.assignment" (assign)="onAssign($event)" />
+          </div>
+        </section>
+
+        <!-- Décision -->
+        <app-decision-panel
+          [alert]="alert"
+          (decide)="onDecide($event)"
+          (escalate)="onEscalate($event)"
+        />
+      </div>
+    </aside>
+  </div>
+
+  <!-- ══ Panneaux mobiles ══════════════════════════════════════════════════ -->
+  <app-drawer
+    [open]="mobilePanel() === 'client'"
+    title="Fiche client"
+    [subtitle]="alert.client.firstName + ' ' + alert.client.lastName"
+    (close)="mobilePanel.set(null)"
+  >
+    <div class="iv__drawer-body">
+      <app-client-profile [client]="alert.client" />
+    </div>
+  </app-drawer>
+
+  <app-drawer
+    [open]="mobilePanel() === 'profile'"
+    title="Fiche de screening"
+    [subtitle]="alert.profile.firstName + ' ' + alert.profile.lastName"
+    (close)="mobilePanel.set(null)"
+  >
+    <div class="iv__drawer-body">
+      <app-screening-profile [profile]="alert.profile" />
+    </div>
+  </app-drawer>
+
+  <app-drawer
+    [open]="mobilePanel() === 'decision'"
+    title="Décision"
+    [subtitle]="alert.reference"
+    width="wide"
+    (close)="mobilePanel.set(null)"
+  >
+    <div class="iv__drawer-body">
+      <app-assignment-selector [assignment]="alert.assignment" (assign)="onAssign($event)" />
+      <app-decision-panel
+        [alert]="alert"
+        (decide)="onDecide($event)"
+        (escalate)="onEscalate($event)"
+      />
+    </div>
+  </app-drawer>
+} @else {
+  <app-empty-state
+    icon="search"
+    title="Alerte introuvable"
+    message="Cette alerte n'existe pas ou ne relève pas du périmètre de filiale actuellement sélectionné."
+    actionLabel="Revenir à la file d'investigation"
+    (action)="goBackToQueue()"
+  />
+}

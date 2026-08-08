@@ -1,0 +1,339 @@
+:host {
+  display: block;
+}
+
+/* ══ En-tête permanent ══════════════════════════════════════════════════════ */
+.iv__header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  padding: var(--sp-4) var(--sp-6) var(--sp-4);
+  background: color-mix(in srgb, var(--bg-canvas) 90%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.iv__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-3);
+}
+
+.iv__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.iv__back:hover {
+  color: var(--text-primary);
+}
+
+.iv__queue {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.iv__queue-label {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  padding: 0 var(--sp-2);
+  white-space: nowrap;
+}
+
+.iv__identity {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-6);
+}
+
+.iv__identity-main {
+  min-width: 0;
+}
+
+.iv__ref-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.iv__ref {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-tighter);
+  color: var(--text-primary);
+  margin-right: var(--sp-1);
+}
+
+.iv__reopen-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-sm);
+  background: var(--sanction-soft);
+  border: 1px solid var(--sanction-border);
+  color: var(--sanction-text);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+.iv__client-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.iv__client-line strong {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.iv__sep {
+  color: var(--text-disabled);
+}
+
+.iv__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+}
+
+.iv__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.iv__meta-item app-icon {
+  color: var(--text-tertiary);
+}
+
+.iv__meta-item--muted {
+  color: var(--text-tertiary);
+}
+
+.iv__meta-item.is-late {
+  color: var(--critical-text);
+}
+
+.iv__meta-item.is-late app-icon {
+  color: var(--critical-text);
+}
+
+.iv__late-tag {
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  background: var(--critical-soft);
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+}
+
+.iv__identity-score {
+  flex: none;
+}
+
+/* Les onglets mobiles n'apparaissent que lorsque les colonnes disparaissent. */
+.iv__mobile-tabs {
+  display: none;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ══ Grille principale ══════════════════════════════════════════════════════ */
+.iv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6) var(--sp-10);
+  max-width: var(--content-max);
+  align-items: start;
+}
+
+.iv__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.iv__parties {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+  align-items: stretch;
+}
+
+.iv__analysis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+.iv__score-total {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-tighter);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══ Onglets ════════════════════════════════════════════════════════════════ */
+.iv__tabs-head {
+  padding: 0 var(--sp-3);
+}
+
+.iv__tabs {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.iv__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 46px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.iv__tab:hover {
+  color: var(--text-secondary);
+}
+
+.iv__tab.is-active {
+  color: var(--text-primary);
+}
+
+/* Soulignement de l'onglet actif, aligné sur la bordure du panneau. */
+.iv__tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: -1px;
+  height: 2px;
+  border-radius: var(--r-full) var(--r-full) 0 0;
+  background: var(--accent);
+}
+
+/* ══ Rail latéral ═══════════════════════════════════════════════════════════ */
+.iv__rail {
+  min-width: 0;
+}
+
+.iv__rail-sticky {
+  position: sticky;
+  top: calc(var(--sp-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.iv__score-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: center;
+}
+
+.iv__score-caption {
+  font-size: var(--fs-2xs);
+  color: var(--text-tertiary);
+  line-height: var(--lh-snug);
+}
+
+/* ══ Panneaux mobiles ═══════════════════════════════════════════════════════ */
+.iv__drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+}
+
+/* ══ Adaptations ════════════════════════════════════════════════════════════ */
+@media (max-width: 1440px) {
+  .iv {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+/* Sous 1200 px, le rail passe sous le contenu : les colonnes d'identité
+   restent prioritaires, la décision reste atteignable en fin de page. */
+@media (max-width: 1200px) {
+  .iv {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .iv__rail-sticky {
+    position: static;
+  }
+
+  .iv__identity-score {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .iv__parties {
+    display: none;
+  }
+
+  .iv__analysis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .iv__mobile-tabs {
+    display: flex;
+  }
+
+  .iv__rail {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .iv__header {
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .iv {
+    padding: var(--sp-3) var(--sp-4) var(--sp-8);
+  }
+
+  .iv__ref {
+    font-size: var(--fs-lg);
+  }
+
+  .iv__meta {
+    gap: var(--sp-3);
+  }
+}

@@ -1,0 +1,316 @@
+<app-page-header
+  title="Reporting"
+  eyebrow="Pilotage du dispositif"
+  [subtitle]="
+    'Volumétrie, tenue des délais et qualité des décisions sur ' +
+    subsidiary().name +
+    ' — régulateur ' +
+    subsidiary().regulator +
+    '.'
+  "
+>
+  <div headerActions class="rp__head-actions">
+    <div class="rp__period">
+      @for (option of periods; track option) {
+        <button
+          type="button"
+          class="rp__period-btn"
+          [class.is-active]="period() === option"
+          (click)="period.set(option)"
+        >
+          {{ option }} j
+        </button>
+      }
+    </div>
+
+    @if (canExport()) {
+      <button type="button" class="btn btn--secondary btn--sm" (click)="exportCsv()">
+        <app-icon name="download" [size]="13" />
+        Exporter en CSV
+      </button>
+    }
+  </div>
+
+  <p class="rp__updated">
+    <app-icon name="refresh" [size]="12" />
+    Données arrêtées au {{ store.lastRefreshedAt() | frDateTime }}
+  </p>
+</app-page-header>
+
+<div class="rp">
+  <!-- ══ Indicateurs de pilotage ══════════════════════════════════════════ -->
+  <section class="rp__kpis anim-stagger">
+    <app-kpi-card
+      label="Alertes générées"
+      [value]="totals().generated"
+      icon="radar"
+      tone="accent"
+      [hint]="periodLabel()"
+    />
+    <app-kpi-card
+      label="Alertes traitées"
+      [value]="totals().processed"
+      icon="check-circle"
+      tone="success"
+      [hint]="periodLabel()"
+    />
+    <app-kpi-card
+      label="Taux d'absorption"
+      [value]="totals().absorption"
+      suffix=" %"
+      icon="activity"
+      [tone]="totals().absorption >= 90 ? 'success' : 'warning'"
+      hint="Traitées rapportées aux générées"
+    />
+    <app-kpi-card
+      label="Tenue des délais"
+      [value]="slaRate()"
+      suffix=" %"
+      icon="clock"
+      [tone]="slaRate() >= 90 ? 'success' : slaRate() >= 70 ? 'warning' : 'critical'"
+      hint="Décisions rendues dans le délai attendu"
+    />
+    <app-kpi-card
+      label="Délai moyen"
+      [value]="stats().averageProcessingHours | duration"
+      icon="activity"
+      tone="info"
+      hint="De la génération à la décision"
+    />
+    <app-kpi-card
+      label="Taux de faux positifs"
+      [value]="falsePositiveRate()"
+      suffix=" %"
+      icon="shield-check"
+      [tone]="falsePositiveRate() >= 95 ? 'warning' : 'neutral'"
+      hint="Clôtures sans correspondance avérée"
+    />
+    <app-kpi-card
+      label="Alertes avérées"
+      [value]="stats().confirmed"
+      icon="alert-triangle"
+      tone="critical"
+      hint="Correspondances confirmées"
+    />
+    <app-kpi-card
+      label="Stock en attente"
+      [value]="stats().open"
+      icon="layers"
+      [tone]="stats().overdue > 0 ? 'critical' : 'neutral'"
+      [hint]="stats().overdue + ' hors délai'"
+    />
+  </section>
+
+  <!-- ══ Volumétrie ═══════════════════════════════════════════════════════ -->
+  <section class="panel">
+    <header class="panel__head">
+      <div>
+        <h2 class="panel__title">
+          <app-icon name="activity" [size]="15" />
+          Flux d'alertes
+        </h2>
+        <p class="panel__subtitle">
+          {{ totals().generated }} générées et {{ totals().processed }} traitées sur
+          {{ periodLabel() }}
+        </p>
+      </div>
+      <div class="rp__legend">
+        <span class="rp__legend-item">
+          <span class="dot" style="background: var(--accent)"></span>
+          Générées
+        </span>
+        <span class="rp__legend-item">
+          <span class="dot" style="background: var(--success)"></span>
+          Traitées
+        </span>
+      </div>
+    </header>
+    <div class="panel__body">
+      <app-area-chart
+        class="rp__chart"
+        [series]="volumeSeries()"
+        [labels]="volumeLabels()"
+        ariaLabel="Flux d'alertes générées et traitées"
+      />
+    </div>
+  </section>
+
+  <!-- ══ Répartitions ═════════════════════════════════════════════════════ -->
+  <section class="rp__splits">
+    <article class="panel">
+      <header class="panel__head">
+        <h2 class="panel__title">
+          <app-icon name="gavel" [size]="15" />
+          Nature des décisions
+        </h2>
+      </header>
+      <div class="panel__body">
+        <app-donut-chart
+          [segments]="decisionSegments()"
+          centerLabel="Décisions"
+          ariaLabel="Répartition des décisions prononcées"
+        />
+      </div>
+    </article>
+
+    <article class="panel">
+      <header class="panel__head">
+        <h2 class="panel__title">
+          <app-icon name="layers" [size]="15" />
+          Par dispositif
+        </h2>
+      </header>
+      <div class="panel__body">
+        <app-donut-chart
+          [segments]="typeSegments()"
+          centerLabel="Alertes"
+          ariaLabel="Répartition par dispositif de screening"
+        />
+      </div>
+    </article>
+
+    <article class="panel">
+      <header class="panel__head">
+        <h2 class="panel__title">
+          <app-icon name="flag" [size]="15" />
+          Par statut
+        </h2>
+      </header>
+      <div class="panel__body">
+        <app-bar-list [items]="statusBars()" />
+      </div>
+    </article>
+  </section>
+
+  <!-- ══ Performance par dispositif ═══════════════════════════════════════ -->
+  <section class="panel">
+    <header class="panel__head">
+      <div>
+        <h2 class="panel__title">
+          <app-icon name="target" [size]="15" />
+          Rendement par dispositif
+        </h2>
+        <p class="panel__subtitle">
+          Un taux d'avération très bas signale un dispositif mal calibré, générateur de bruit
+        </p>
+      </div>
+    </header>
+
+    <div class="rp__table-wrap">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th class="dt__accent"></th>
+            <th>Dispositif</th>
+            <th class="dt__num">Alertes</th>
+            <th class="dt__num">Traitées</th>
+            <th class="dt__num">Avérées</th>
+            <th class="dt__num">Taux d'avération</th>
+            <th class="dt__num">Délai moyen</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of typePerformance(); track row.type) {
+            <tr>
+              <td class="dt__accent" [style.background]="row.tone"></td>
+              <td class="rp__strong">{{ row.label }}</td>
+              <td class="dt__num">{{ row.total }}</td>
+              <td class="dt__num">{{ row.processed }}</td>
+              <td class="dt__num">{{ row.confirmed }}</td>
+              <td class="dt__num">
+                <span class="rp__rate" [attr.data-high]="row.confirmedRate >= 20 ? '' : null">
+                  {{ row.confirmedRate }} %
+                </span>
+              </td>
+              <td class="dt__num">{{ row.averageHours | duration }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ Charge par analyste ══════════════════════════════════════════════ -->
+  <section class="panel">
+    <header class="panel__head">
+      <div>
+        <h2 class="panel__title">
+          <app-icon name="users" [size]="15" />
+          Charge et performance par analyste
+        </h2>
+        <p class="panel__subtitle">
+          Indicateurs de pilotage d'équipe — ils ne constituent pas une évaluation individuelle
+        </p>
+      </div>
+    </header>
+
+    <div class="rp__table-wrap">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Analyste</th>
+            <th>Niveau</th>
+            <th>Décisions rendues</th>
+            <th class="dt__num">En cours</th>
+            <th class="dt__num">Délai moyen</th>
+            <th class="dt__num">Taux d'avération</th>
+            <th class="dt__num">Tenue des délais</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of analystRows(); track row.id) {
+            <tr>
+              <td>
+                <span class="rp__analyst">
+                  <app-avatar [name]="row.name" [hue]="row.hue" size="xs" />
+                  <span class="rp__strong">{{ row.name }}</span>
+                </span>
+              </td>
+              <td>
+                <span class="rp__level">{{ row.level }}</span>
+              </td>
+              <td>
+                <div class="rp__load">
+                  <span class="rp__load-bar">
+                    <span
+                      class="rp__load-fill"
+                      [style.width.%]="(row.processed / maxProcessed()) * 100"
+                    ></span>
+                  </span>
+                  <span class="rp__load-value">{{ row.processed }}</span>
+                </div>
+              </td>
+              <td class="dt__num">{{ row.open }}</td>
+              <td class="dt__num">{{ row.averageHours | duration }}</td>
+
+              <!-- Sans décision rendue, ces ratios n'ont pas de sens : on n'affiche rien. -->
+              <td class="dt__num">
+                @if (row.processed > 0) {
+                  {{ row.confirmedRate }} %
+                } @else {
+                  <span class="rp__none">—</span>
+                }
+              </td>
+              <td class="dt__num">
+                @if (row.processed > 0) {
+                  <span
+                    class="rp__sla"
+                    [attr.data-tone]="row.slaRate >= 90 ? 'good' : row.slaRate >= 70 ? 'warn' : 'bad'"
+                  >
+                    {{ row.slaRate }} %
+                  </span>
+                } @else {
+                  <span class="rp__none">—</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="rp__empty">Aucun analyste rattaché à cette filiale.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,357 @@
+<app-page-header [title]="greeting() + ' ' + firstName() + ' 👋'">
+  <p class="dash__lede">Voici la situation de votre périmètre.</p>
+
+  <div class="dash__context">
+    <span class="dash__chip">
+      <app-icon name="building" [size]="13" />
+      {{ subsidiary().name }}
+      <span class="dash__chip-sep">·</span>
+      {{ subsidiary().regulator }}
+    </span>
+
+    <span class="dash__chip">
+      <app-icon name="calendar" [size]="13" />
+      {{ periodLabel() }}
+    </span>
+
+    <span class="dash__chip dash__chip--muted">
+      <app-icon name="refresh" [size]="13" />
+      Mis à jour le {{ store.lastRefreshedAt() | frDateTime }}
+    </span>
+  </div>
+
+  <div headerActions class="dash__period">
+    @for (option of periods; track option) {
+      <button
+        type="button"
+        class="dash__period-btn"
+        [class.is-active]="period() === option"
+        (click)="period.set(option)"
+      >
+        {{ option }} j
+      </button>
+    }
+    <button type="button" class="btn btn--secondary btn--sm" (click)="store.refresh()">
+      <app-icon name="refresh" [size]="13" />
+      Actualiser
+    </button>
+  </div>
+</app-page-header>
+
+<div class="dash">
+  <!-- ══ Indicateurs ══════════════════════════════════════════════════════ -->
+  <section class="dash__kpis anim-stagger" aria-label="Indicateurs clés">
+    <app-kpi-card
+      label="Alertes non traitées"
+      [value]="stats().open"
+      icon="layers"
+      tone="critical"
+      [series]="backlogSpark()"
+      [invertTrend]="true"
+      hint="Stock total en attente de décision"
+      link="/alertes/a-traiter"
+    />
+
+    <app-kpi-card
+      label="Alertes à traiter"
+      [value]="stats().toProcess"
+      icon="inbox"
+      tone="info"
+      hint="Non encore affectées"
+      link="/alertes/a-traiter"
+      [linkParams]="{ statut: 'TO_PROCESS' }"
+    />
+
+    <app-kpi-card
+      label="Alertes affectées"
+      [value]="stats().assigned + stats().inProgress"
+      icon="user-check"
+      tone="accent"
+      hint="Prises en charge par un analyste"
+      link="/alertes/a-traiter"
+      [linkParams]="{ statut: 'ASSIGNED' }"
+    />
+
+    <app-kpi-card
+      label="Alertes générées"
+      [value]="volumeTotals().generated"
+      icon="radar"
+      tone="neutral"
+      [delta]="generatedTrend()"
+      [series]="generatedSpark()"
+      [invertTrend]="true"
+      [period]="'vs 7 j préc.'"
+    />
+
+    <app-kpi-card
+      label="Alertes traitées"
+      [value]="stats().processed"
+      icon="check-circle"
+      tone="success"
+      [delta]="processedTrend()"
+      [series]="processedSpark()"
+      [period]="'vs 7 j préc.'"
+      link="/alertes/traitees"
+    />
+
+    <app-kpi-card
+      label="Alertes avérées"
+      [value]="stats().confirmed"
+      icon="alert-triangle"
+      tone="critical"
+      hint="Correspondances confirmées"
+      link="/alertes/traitees"
+      [linkParams]="{ decision: 'CONFIRMED' }"
+    />
+
+    <app-kpi-card
+      label="Alertes neutralisées"
+      [value]="stats().neutralized + stats().homonym"
+      icon="shield-check"
+      tone="success"
+      hint="Homonymes et neutralisations"
+      link="/alertes/traitees"
+    />
+
+    <app-kpi-card
+      label="Délai moyen de traitement"
+      [value]="averageHours() | duration"
+      icon="clock"
+      tone="warning"
+      [hint]="slaRate() + ' % traitées dans le délai attendu'"
+    />
+  </section>
+
+  <!-- ══ Graphiques ═══════════════════════════════════════════════════════ -->
+  <section class="dash__charts">
+    <article class="panel dash__volume">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="activity" [size]="15" />
+            Volume d'alertes
+          </h2>
+          <p class="panel__subtitle">
+            {{ volumeTotals().generated }} générées · {{ volumeTotals().processed }} traitées sur
+            {{ periodLabel() }}
+          </p>
+        </div>
+
+        <div class="dash__legend">
+          <span class="dash__legend-item">
+            <span class="dot" style="background: var(--accent)"></span>
+            Générées
+          </span>
+          <span class="dash__legend-item">
+            <span class="dot" style="background: var(--success)"></span>
+            Traitées
+          </span>
+        </div>
+      </header>
+
+      <div class="panel__body">
+        @if (store.loading()) {
+          <div class="skeleton dash__chart-skeleton"></div>
+        } @else {
+          <app-area-chart
+            class="dash__chart"
+            [series]="volumeSeries()"
+            [labels]="volumeLabels()"
+            ariaLabel="Évolution du volume d'alertes générées et traitées"
+          />
+        }
+      </div>
+    </article>
+
+    <article class="panel">
+      <header class="panel__head">
+        <h2 class="panel__title">
+          <app-icon name="layers" [size]="15" />
+          Répartition par dispositif
+        </h2>
+      </header>
+      <div class="panel__body">
+        <app-donut-chart
+          [segments]="typeSegments()"
+          centerLabel="Alertes"
+          ariaLabel="Répartition des alertes par dispositif de screening"
+        />
+      </div>
+    </article>
+  </section>
+
+  <section class="dash__splits">
+    <article class="panel">
+      <header class="panel__head">
+        <h2 class="panel__title">
+          <app-icon name="flag" [size]="15" />
+          Répartition par statut
+        </h2>
+      </header>
+      <div class="panel__body">
+        <app-bar-list [items]="statusBars()" />
+      </div>
+    </article>
+
+    <article class="panel">
+      <header class="panel__head">
+        <div>
+          <h2 class="panel__title">
+            <app-icon name="gavel" [size]="15" />
+            Décisions prononcées
+          </h2>
+          <p class="panel__subtitle">Sur l'ensemble des alertes traitées du périmètre</p>
+        </div>
+      </header>
+      <div class="panel__body">
+        <app-bar-list [items]="decisionBars()" />
+      </div>
+    </article>
+
+    <article class="panel dash__health">
+      <header class="panel__head">
+        <h2 class="panel__title">
+          <app-icon name="shield-check" [size]="15" />
+          Tenue des délais
+        </h2>
+      </header>
+      <div class="panel__body dash__health-body">
+        <div class="dash__gauge">
+          <span class="dash__gauge-value">{{ slaRate() }}<span>%</span></span>
+          <span class="dash__gauge-label">traitées dans le délai</span>
+        </div>
+
+        <ul class="dash__health-list">
+          <li>
+            <span class="dash__health-label">Hors délai</span>
+            <span class="dash__health-value" [class.is-critical]="stats().overdue > 0">
+              {{ stats().overdue }}
+            </span>
+          </li>
+          <li>
+            <span class="dash__health-label">Escaladées</span>
+            <span class="dash__health-value">{{ stats().escalated }}</span>
+          </li>
+          <li>
+            <span class="dash__health-label">Rouvertes</span>
+            <span class="dash__health-value">{{ stats().reopened }}</span>
+          </li>
+          <li>
+            <span class="dash__health-label">Délai moyen</span>
+            <span class="dash__health-value">{{ averageHours() | duration }}</span>
+          </li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <!-- ══ Alertes prioritaires ═════════════════════════════════════════════ -->
+  <section class="panel dash__priority">
+    <header class="panel__head">
+      <div>
+        <h2 class="panel__title">
+          <app-icon name="zap" [size]="15" />
+          Alertes prioritaires
+        </h2>
+        <p class="panel__subtitle">
+          Classées par dépassement de délai, puis par priorité et ancienneté
+        </p>
+      </div>
+      <a class="btn btn--ghost btn--sm" routerLink="/alertes/a-traiter">
+        Voir la file complète
+        <app-icon name="arrow-right" [size]="13" />
+      </a>
+    </header>
+
+    @if (store.loading()) {
+      <app-table-skeleton [rowCount]="6" [columns]="[40, 55, 70, 45, 35, 50, 60, 30]" />
+    } @else if (priorityAlerts().length === 0) {
+      <app-empty-state
+        icon="check-circle"
+        title="Aucune alerte en attente"
+        message="Toutes les alertes du périmètre ont été traitées. La file se remplira au prochain passage du moteur de screening."
+        [compact]="true"
+      />
+    } @else {
+      <div class="dash__table-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th class="dt__accent"></th>
+              <th>Priorité</th>
+              <th>Type</th>
+              <th>Client</th>
+              <th class="dt__num">Score</th>
+              <th>Âge</th>
+              <th>Statut</th>
+              <th>Analyste</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (alert of priorityAlerts(); track alert.id) {
+              <tr class="is-clickable">
+                <td
+                  class="dt__accent"
+                  [style.background]="'var(' + priorityColor(alert) + ')'"
+                  [style.opacity]="isLate(alert) ? 1 : 0.45"
+                ></td>
+
+                <td><app-risk-badge [priority]="alert.priority" size="sm" /></td>
+                <td><app-type-badge [type]="alert.type" size="sm" /></td>
+
+                <td>
+                  <a class="dash__client" [routerLink]="['/alertes', alert.id]">
+                    <span class="dash__client-name">
+                      {{ alert.client.firstName }} {{ alert.client.lastName }}
+                    </span>
+                    <span class="dash__client-ref mono">{{ alert.reference }}</span>
+                  </a>
+                </td>
+
+                <td class="dt__num">
+                  <span class="dash__score" [attr.data-band]="scoreBandOf(alert)">
+                    {{ alert.match.score }} %
+                  </span>
+                </td>
+
+                <td>
+                  <span class="dash__age" [class.is-late]="isLate(alert)">
+                    @if (isLate(alert)) {
+                      <app-icon name="clock" [size]="12" />
+                    }
+                    {{ alert.generatedAt | age }}
+                  </span>
+                </td>
+
+                <td><app-status-badge [status]="alert.status" size="sm" /></td>
+
+                <td>
+                  @if (alert.assignment) {
+                    <span class="dash__analyst">
+                      <app-avatar
+                        [name]="alert.assignment.userName"
+                        [hue]="alert.assignment.userHue"
+                        size="xs"
+                      />
+                      <span class="truncate">{{ alert.assignment.userName }}</span>
+                    </span>
+                  } @else {
+                    <span class="dash__unassigned">Non affectée</span>
+                  }
+                </td>
+
+                <td>
+                  <a class="btn btn--secondary btn--sm" [routerLink]="['/alertes', alert.id]">
+                    Traiter
+                    <app-icon name="arrow-right" [size]="12" />
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

@@ -1,0 +1,366 @@
+<app-page-header [title]="title()" [subtitle]="subtitle()" [sticky]="true">
+  <span headerBadge class="count-pill count-pill--accent inbox__count">{{ total() }}</span>
+
+  <div headerActions class="inbox__head-actions">
+    <button
+      type="button"
+      class="btn btn--secondary btn--sm"
+      (click)="filtersExpanded.set(!filtersExpanded())"
+      [attr.aria-expanded]="filtersExpanded()"
+    >
+      <app-icon name="filter" [size]="13" />
+      Filtres
+      @if (activeFilterCount() > 0) {
+        <span class="count-pill count-pill--accent">{{ activeFilterCount() }}</span>
+      }
+    </button>
+
+    <button type="button" class="btn btn--secondary btn--sm" (click)="store.refresh()">
+      <app-icon name="refresh" [size]="13" />
+      Actualiser
+    </button>
+  </div>
+
+  <!-- ══ Barre de filtres ═══════════════════════════════════════════════════ -->
+  <div class="fb">
+    <div class="fb__row">
+      <label class="fb__search">
+        <app-icon name="search" [size]="15" />
+        <input
+          type="search"
+          class="fb__search-input"
+          placeholder="Rechercher une référence, un client, un analyste…"
+          [value]="filters().search"
+          (input)="onSearch($event)"
+          aria-label="Rechercher dans la file"
+        />
+      </label>
+
+      <select class="select fb__select" [value]="filters().age" (change)="setAge($event)" aria-label="Ancienneté">
+        @for (bucket of ageBuckets; track bucket.value) {
+          <option [value]="bucket.value">{{ bucket.label }}</option>
+        }
+      </select>
+
+      <select
+        class="select fb__select"
+        [value]="filters().analystId"
+        (change)="setAnalyst($event)"
+        aria-label="Analyste"
+      >
+        <option value="">Tous les analystes</option>
+        <option value="__none__">Non affectées</option>
+        @for (analyst of analysts(); track analyst.id) {
+          <option [value]="analyst.id">{{ analyst.name }}</option>
+        }
+      </select>
+
+      <select class="select fb__select" [value]="filters().sort" (change)="setSort($event)" aria-label="Tri">
+        @for (option of sortOptions; track option.value) {
+          <option [value]="option.value">Trier : {{ option.label }}</option>
+        }
+      </select>
+
+      @if (activeFilterCount() > 0) {
+        <button type="button" class="btn btn--ghost btn--sm" (click)="resetFilters()">
+          <app-icon name="x" [size]="13" />
+          Réinitialiser
+        </button>
+      }
+    </div>
+
+    @if (filtersExpanded()) {
+      <div class="fb__expanded anim-fade-in">
+        <div class="fb__group">
+          <span class="fb__group-label">Dispositif</span>
+          <div class="fb__chips">
+            @for (type of allTypes; track type) {
+              <button
+                type="button"
+                class="chip"
+                [attr.data-variant]="type.toLowerCase()"
+                [class.is-active]="filters().types.includes(type)"
+                (click)="toggleType(type)"
+              >
+                {{ typeLabel(type) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="fb__group">
+          <span class="fb__group-label">Priorité</span>
+          <div class="fb__chips">
+            @for (priority of allPriorities; track priority) {
+              <button
+                type="button"
+                class="chip"
+                [class.is-active]="filters().priorities.includes(priority)"
+                (click)="togglePriority(priority)"
+              >
+                {{ priorityLabel(priority) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="fb__group">
+          <span class="fb__group-label">Statut</span>
+          <div class="fb__chips">
+            @for (status of allStatuses; track status) {
+              <button
+                type="button"
+                class="chip"
+                [class.is-active]="filters().statuses.includes(status)"
+                (click)="toggleStatus(status)"
+              >
+                {{ statusLabel(status) }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-page-header>
+
+<div class="inbox">
+  <!-- ══ Barre d'actions de masse ══════════════════════════════════════════ -->
+  @if (selection().size > 0) {
+    <div class="inbox__bulk anim-fade-in-up">
+      <span class="inbox__bulk-count">
+        {{ selection().size }} alerte{{ selection().size > 1 ? 's' : '' }} sélectionnée{{
+          selection().size > 1 ? 's' : ''
+        }}
+      </span>
+
+      <div class="divider--v"></div>
+
+      <button type="button" class="btn btn--ghost btn--sm" (click)="assignSelectionToMe()">
+        <app-icon name="user-check" [size]="13" />
+        M'affecter
+      </button>
+
+      @if (auth.has('alert:assign-others')) {
+        <button type="button" class="btn btn--ghost btn--sm" (click)="releaseSelection()">
+          <app-icon name="user-minus" [size]="13" />
+          Retirer l'affectation
+        </button>
+      }
+
+      <div class="inbox__bulk-spacer"></div>
+
+      <button type="button" class="btn btn--ghost btn--icon btn--sm" (click)="clearSelection()" aria-label="Annuler la sélection">
+        <app-icon name="x" [size]="14" />
+      </button>
+    </div>
+  }
+
+  <!-- ══ Tableau ═══════════════════════════════════════════════════════════ -->
+  <section class="panel inbox__panel">
+    @if (store.loading()) {
+      <app-table-skeleton [rowCount]="10" [columns]="[30, 45, 40, 75, 35, 50, 30, 45, 55, 40]" />
+    } @else if (paged().length === 0) {
+      <app-empty-state
+        [icon]="activeFilterCount() > 0 ? 'filter' : 'check-circle'"
+        [title]="activeFilterCount() > 0 ? 'Aucune alerte ne correspond aux filtres' : 'File vide'"
+        [message]="
+          activeFilterCount() > 0
+            ? 'Élargissez les critères pour retrouver des dossiers, ou réinitialisez les filtres.'
+            : 'Aucune alerte en attente sur ce périmètre. La file se remplira au prochain passage du moteur de screening.'
+        "
+        [actionLabel]="activeFilterCount() > 0 ? 'Réinitialiser les filtres' : ''"
+        (action)="resetFilters()"
+      />
+    } @else {
+      <div class="inbox__table-wrap">
+        <table class="dt inbox__table">
+          <thead>
+            <tr>
+              <th class="dt__accent"></th>
+              <th class="inbox__check-col">
+                <input
+                  type="checkbox"
+                  class="checkbox"
+                  [checked]="allPageSelected()"
+                  [indeterminate]="somePageSelected()"
+                  (change)="toggleSelectAll()"
+                  aria-label="Tout sélectionner sur cette page"
+                />
+              </th>
+              <th>Alerte</th>
+              <th>Priorité</th>
+              <th>Type</th>
+              <th>Client</th>
+              <th class="dt__num">Score</th>
+              <th>Génération</th>
+              <th>Âge</th>
+              <th>Statut</th>
+              <th>Affectation</th>
+              <th>Dernière action</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (alert of paged(); track alert.id) {
+              <tr
+                class="is-clickable"
+                [class.is-selected]="isSelected(alert.id)"
+                [class.is-active]="previewId() === alert.id"
+                (click)="openAlert(alert)"
+              >
+                <td
+                  class="dt__accent"
+                  [style.background]="'var(' + priorityColor(alert) + ')'"
+                  [style.opacity]="isLate(alert) ? 1 : 0.4"
+                ></td>
+
+                <td class="inbox__check-col" (click)="$event.stopPropagation()">
+                  <input
+                    type="checkbox"
+                    class="checkbox"
+                    [checked]="isSelected(alert.id)"
+                    (change)="toggleSelection(alert.id, $event)"
+                    [attr.aria-label]="'Sélectionner ' + alert.reference"
+                  />
+                </td>
+
+                <td>
+                  <span class="inbox__ref mono">{{ alert.reference }}</span>
+                  @if (alert.reopenCount > 0) {
+                    <span class="inbox__reopen" title="Alerte rouverte">
+                      <app-icon name="rotate" [size]="11" />
+                    </span>
+                  }
+                </td>
+
+                <td><app-risk-badge [priority]="alert.priority" size="sm" /></td>
+                <td><app-type-badge [type]="alert.type" size="sm" /></td>
+
+                <td>
+                  <div class="inbox__client">
+                    <span class="inbox__client-name truncate">
+                      {{ alert.client.firstName }} {{ alert.client.lastName }}
+                    </span>
+                    <span class="inbox__client-meta truncate">
+                      {{ alert.client.reference }} · rapproché de {{ alert.profile.firstName }}
+                      {{ alert.profile.lastName }}
+                    </span>
+                  </div>
+                </td>
+
+                <td class="dt__num">
+                  <span class="inbox__score" [attr.data-band]="scoreBandOf(alert)">
+                    {{ alert.match.score }} %
+                  </span>
+                </td>
+
+                <td class="inbox__nowrap">{{ alert.generatedAt | frDate }}</td>
+
+                <td>
+                  <span class="inbox__age" [class.is-late]="isLate(alert)">
+                    @if (isLate(alert)) {
+                      <app-icon name="clock" [size]="12" />
+                    }
+                    {{ alert.generatedAt | age }}
+                  </span>
+                </td>
+
+                <td><app-status-badge [status]="alert.status" size="sm" /></td>
+
+                <td>
+                  @if (alert.assignment; as assignment) {
+                    <span class="inbox__analyst">
+                      <app-avatar [name]="assignment.userName" [hue]="assignment.userHue" size="xs" />
+                      <span class="truncate">{{ assignment.userName }}</span>
+                    </span>
+                  } @else {
+                    <span class="inbox__unassigned">Non affectée</span>
+                  }
+                </td>
+
+                <td>
+                  <div class="inbox__last">
+                    <span class="inbox__last-label truncate">{{ alert.lastActionLabel }}</span>
+                    <span class="inbox__last-time">{{ alert.lastActionAt | age }}</span>
+                  </div>
+                </td>
+
+                <td class="inbox__row-actions" (click)="$event.stopPropagation()">
+                  <button
+                    type="button"
+                    class="btn btn--ghost btn--icon btn--sm"
+                    (click)="openPreview(alert, $event)"
+                    [attr.aria-label]="'Aperçu de ' + alert.reference"
+                    title="Aperçu sans quitter la liste"
+                  >
+                    <app-icon name="eye" [size]="14" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ══ Pagination ══════════════════════════════════════════════════ -->
+      <footer class="inbox__foot">
+        <span class="inbox__range">
+          {{ rangeStart() }}–{{ rangeEnd() }} sur {{ total() }} alerte{{ total() > 1 ? 's' : '' }}
+        </span>
+
+        <div class="inbox__pager">
+          <label class="inbox__page-size">
+            <span>Par page</span>
+            <select class="select select--tight" [value]="pageSize()" (change)="setPageSize($event)">
+              @for (size of pageSizes; track size) {
+                <option [value]="size">{{ size }}</option>
+              }
+            </select>
+          </label>
+
+          <div class="inbox__pager-buttons">
+            <button
+              type="button"
+              class="btn btn--ghost btn--icon btn--sm"
+              [disabled]="page() === 1"
+              (click)="goToPage(page() - 1)"
+              aria-label="Page précédente"
+            >
+              <app-icon name="chevron-left" [size]="14" />
+            </button>
+
+            <span class="inbox__page-label">Page {{ page() }} / {{ pageCount() }}</span>
+
+            <button
+              type="button"
+              class="btn btn--ghost btn--icon btn--sm"
+              [disabled]="page() === pageCount()"
+              (click)="goToPage(page() + 1)"
+              aria-label="Page suivante"
+            >
+              <app-icon name="chevron-right" [size]="14" />
+            </button>
+          </div>
+        </div>
+      </footer>
+    }
+  </section>
+</div>
+
+<!-- ══ Panneau d'aperçu ═══════════════════════════════════════════════════ -->
+<app-drawer
+  [open]="previewAlert() !== null"
+  [title]="previewAlert()?.reference ?? ''"
+  [subtitle]="
+    previewAlert()
+      ? previewAlert()!.client.firstName + ' ' + previewAlert()!.client.lastName
+      : ''
+  "
+  (close)="closePreview()"
+>
+  @if (previewAlert(); as alert) {
+    <app-alert-preview [alert]="alert" />
+  }
+</app-drawer>

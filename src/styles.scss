@@ -1,0 +1,10 @@
+/* =============================================================================
+   Feuille de styles globale — Plateforme LCB-FT
+   L'ordre compte : tokens → base → primitives → badges → animations.
+   ========================================================================== */
+
+@use './styles/tokens';
+@use './styles/base';
+@use './styles/primitives';
+@use './styles/badges';
+@use './styles/animations';
