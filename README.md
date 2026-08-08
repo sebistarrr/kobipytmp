@@ -22,6 +22,20 @@ npm run build      # build de production
 npm test           # tests unitaires (Vitest)
 ```
 
+## Déploiement
+
+Chaque poussée sur `main` publie l'application sur GitHub Pages
+(`.github/workflows/deploy.yml`).
+
+Le site étant servi depuis un sous-chemin (`/<dépôt>/`), le workflow passe
+`--base-href` au build : sans cela, les scripts et les feuilles de style
+seraient demandés à la racine du domaine. GitHub Pages ne servant que des
+fichiers statiques, une URL profonde comme `/alertes/a-traiter` n'existe pas
+sur disque ; `index.html` est donc dupliqué en `404.html` pour que le routeur
+Angular reprenne la main. L'accès direct à une telle URL répond avec un statut
+404 — c'est le fonctionnement attendu de cette plateforme, et l'application
+s'affiche normalement.
+
 ## Pile technique
 
 - **Angular 21** — composants standalone, Signals, `computed()`, `effect()`

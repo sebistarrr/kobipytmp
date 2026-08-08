@@ -27,14 +27,24 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Test
+        run: npm test
+      # Le site est publié sous https://<compte>.github.io/<dépôt>/ : sans
+      # base-href, les scripts et feuilles de style seraient demandés à la
+      # racine du domaine et le routeur construirait des URL erronées.
       - name: Build
-        run: npm run build
+        run: npm run build -- --base-href "/${{ github.event.repository.name }}/"
+      # GitHub Pages sert des fichiers statiques : une URL profonde
+      # (/alertes/a-traiter) n'existe pas sur disque. Servir l'application
+      # depuis la page 404 laisse le routeur Angular reprendre la main.
+      - name: SPA fallback
+        run: cp dist/aml-screening/browser/index.html dist/aml-screening/browser/404.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist/aml-screening/browser
   deploy:
     environment:
       name: github-pages
